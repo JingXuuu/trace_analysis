@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+.agents/
+.codex/
+.pytest_cache/
+.ruff_cache/
+.venv/
+build/
+dist/
+/traces/external/**/.cache/
+/traces/external/**/*.parquet
+/traces/external/**/traces.jsonl

@@ -1,0 +1,27 @@
+{
+  "datasets": [
+    {
+      "repo_id": "zeelHz/lmcache-agentic-traces",
+      "revision": "565e5655d2e4b6cba0865a0e1d60b09ed2dfcdf0",
+      "rows": 24880,
+      "data_bytes": 2370186947,
+      "files": [
+        {"path": "data/train-00000-of-00005.parquet", "bytes": 502376957, "sha256": "7d8fde279e899c0cd97e1b4b73dd2a0d76132c533e77ac1cdd310494710d7447"},
+        {"path": "data/train-00001-of-00005.parquet", "bytes": 555802662, "sha256": "594c934498c9d099e75f9d3332feaaed3587b8b0b8eeb5063e79514cc2aedc8f"},
+        {"path": "data/train-00002-of-00005.parquet", "bytes": 476154555, "sha256": "476b661879f28732bf5c56af4887666194b4f489a1128af59e58bdbfdf6d1ccc"},
+        {"path": "data/train-00003-of-00005.parquet", "bytes": 437652845, "sha256": "ca61176d73e4de62e273983a44531ceeacb251405f8db3b92a791d9343e2c66f"},
+        {"path": "data/train-00004-of-00005.parquet", "bytes": 398199928, "sha256": "a59fe71cf84ae0beb460cabb4edfd3e04f7da945c5d6777ae5df18716eceab71"}
+      ]
+    },
+    {
+      "repo_id": "semianalysisai/cc-traces-weka-no-subagents-051226",
+      "revision": "0ae681ae27a0e3e716b344cb21f1b01bb1313d52",
+      "traces": 949,
+      "requests": 136118,
+      "data_bytes": 2769297121,
+      "files": [
+        {"path": "traces.jsonl", "bytes": 2769297121, "sha256": "fcac6e738d3457dbb97e97168fec8b720b42bb281a44af1e933ab6cd01a4041d"}
+      ]
+    }
+  ]
+}

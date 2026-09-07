@@ -1,0 +1,23 @@
+services:
+  trace-analysis:
+    build:
+      context: .
+      args:
+        TRACE_ANALYSIS_UID: "${TRACE_ANALYSIS_UID:-1000}"
+        TRACE_ANALYSIS_GID: "${TRACE_ANALYSIS_GID:-1000}"
+    ports:
+      - "${TRACE_ANALYSIS_PORT:-8080}:8080"
+    volumes:
+      - ./traces:/data/traces:ro
+      - ./artifacts:/data/artifacts
+    command:
+      - trace-radix-web
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --trace-dir
+      - /data/traces
+      - --output-dir
+      - /data/artifacts
+    restart: unless-stopped

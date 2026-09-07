@@ -1,0 +1,13 @@
+.git
+.github
+.env
+.agents
+.codex
+__pycache__
+*.py[cod]
+.pytest_cache
+.venv
+artifacts
+traces/external/**/.cache
+traces/external/**/*.parquet
+traces/external/**/traces.jsonl

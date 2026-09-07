@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trace-radix-analysis"
+version = "0.1.0"
+description = "Build and visualize SGLang radix-cache structures from Mooncake traces"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+dependencies = ["matplotlib>=3.7"]
+
+[project.optional-dependencies]
+download = ["huggingface-hub>=1.0"]
+parquet = ["pyarrow>=18"]
+deployment = ["pyarrow>=18", "sglang==0.5.14"]
+
+[project.scripts]
+trace-radix = "trace_analysis.cli:main"
+trace-radix-web = "trace_analysis.web:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+trace_analysis = ["static/*.html"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

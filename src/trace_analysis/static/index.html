@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trace Radix Analysis</title>
+  <style>
+    :root { color-scheme:light; --ink:#3d342d; --muted:#786b60; --line:#d9c9b8; --panel:#fffaf4; --sage:#70845d; --cocoa:#8c5e3c; --sand:#cbb196; --cream:#f2e9df; --bg:#e9dfd3; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Inter,ui-sans-serif,system-ui,sans-serif; color:var(--ink); background:var(--bg); }
+    header { padding:19px 24px; background:linear-gradient(112deg,#4e5d43 0%,var(--sage) 58%,#7b684f 100%); color:#fffaf4; border-bottom:4px solid var(--sand); }
+    header h1 { margin:0 0 3px; font-size:21px; letter-spacing:.01em; }
+    header p { margin:0; color:#ece3d8; font-size:13px; }
+    main { display:grid; grid-template-columns:300px minmax(0,1fr); gap:14px; padding:14px; min-height:calc(100vh - 84px); }
+    aside, .viewer { background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 4px 14px rgba(77,58,44,.07); }
+    aside { padding:18px; align-self:start; }
+    label { display:block; font-size:11px; font-weight:750; margin:13px 0 5px; color:#66594e; letter-spacing:.015em; }
+    select, input { width:100%; padding:9px 10px; border:1px solid #cdbba9; border-radius:6px; background:#fffdf9; color:var(--ink); outline:none; transition:border-color .12s,box-shadow .12s; }
+    select:focus, input:focus { border-color:var(--sage); box-shadow:0 0 0 3px rgba(112,132,93,.14); }
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    button, .download { display:inline-flex; align-items:center; justify-content:center; border:0; border-radius:6px; padding:10px 13px; font-weight:700; cursor:pointer; text-decoration:none; transition:background .12s,transform .12s; }
+    #plot { width:100%; margin-top:17px; color:#fffaf4; background:var(--cocoa); }
+    #plot:hover:not(:disabled) { background:#754b2f; transform:translateY(-1px); }
+    #plot:disabled { opacity:.55; cursor:wait; }
+    .actions { display:flex; gap:8px; margin-top:10px; }
+    .download { flex:1; color:#465538; background:#e3eadc; border:1px solid #cad5bf; font-size:12px; }
+    .download:hover { background:#d5e0cc; }
+    .download[aria-disabled="true"] { opacity:.45; pointer-events:none; }
+    #status { min-height:42px; margin-top:14px; font-size:13px; color:var(--muted); line-height:1.45; }
+    #status.error { color:#9e3f32; }
+    .viewer { min-width:0; display:flex; flex-direction:column; overflow:hidden; }
+    .summary { display:flex; flex-wrap:wrap; gap:18px; padding:14px 18px; border-bottom:1px solid var(--line); font-size:13px; color:var(--muted); }
+    .summary b { color:var(--ink); }
+    #canvas { flex:1; min-height:650px; padding:16px; overflow:auto; background:linear-gradient(145deg,#fffdf9,#f7f0e7); }
+    #canvas svg { display:block; max-width:none; height:auto; }
+    #canvas svg .node { cursor:pointer; }
+    #canvas svg.is-highlighting .node:not(.depth-header) { opacity:.14; }
+    #canvas svg.is-highlighting .node.related-node { opacity:1; }
+    #canvas svg.is-highlighting .edge { opacity:.07; }
+    #canvas svg.is-highlighting .edge.related-edge { opacity:1; }
+    #canvas svg .related-node > path, #canvas svg .related-node > polygon,
+    #canvas svg .related-node > ellipse { stroke:#b77945 !important; stroke-width:2.8px !important; }
+    #canvas svg .focus-node > path, #canvas svg .focus-node > polygon,
+    #canvas svg .focus-node > ellipse { stroke:var(--cocoa) !important; stroke-width:4px !important; }
+    #canvas svg .related-edge > path { stroke:#b77945 !important; stroke-width:2px !important; }
+    #canvas svg .related-edge > polygon { fill:#b77945 !important; stroke:#b77945 !important; }
+    .empty { display:grid; place-items:center; height:100%; min-height:600px; color:#938477; text-align:center; }
+    @media (max-width:850px) { main { grid-template-columns:1fr; } #canvas { min-height:500px; } }
+  </style>
+</head>
+<body>
+  <header><h1>Trace Radix Analysis</h1><p>Interactive SGLang prefix-cache structure explorer</p></header>
+  <main>
+    <aside>
+      <label for="trace">Trace</label>
+      <select id="trace"></select>
+      <label for="format">Trace format</label>
+      <select id="format"></select>
+      <div class="row">
+        <div><label for="maxNodes">Whole tree max</label><input id="maxNodes" type="number" min="1" max="20000" value="1000"></div>
+        <div><label for="maxDepthNodes">Per depth max</label><input id="maxDepthNodes" type="number" min="1" max="5000" value="16"></div>
+      </div>
+      <label for="blockSize">Block size (native hash traces)</label>
+      <input id="blockSize" type="number" min="1" value="512">
+      <button id="plot">Build and plot</button>
+      <div class="actions">
+        <a id="svg" class="download" aria-disabled="true">Download SVG</a>
+        <a id="png" class="download" aria-disabled="true">Download PNG</a>
+      </div>
+      <div id="status">Loading available traces…</div>
+    </aside>
+    <section class="viewer">
+      <div id="summary" class="summary"><span>No graph generated yet.</span></div>
+      <div id="canvas"><div class="empty">Choose a trace and settings, then build the tree.</div></div>
+    </section>
+  </main>
+  <script>
+    const byId = id => document.getElementById(id);
+    const trace = byId('trace'), format = byId('format'), plot = byId('plot');
+    const status = byId('status'), canvas = byId('canvas'), summary = byId('summary');
+    const svg = byId('svg'), png = byId('png');
+    const comma = value => Number(value).toLocaleString();
+    const escapeHtml = value => String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+
+    function makeGraphInteractive(svgRoot) {
+      const nodeGroups = [...svgRoot.querySelectorAll('g.node:not(.depth-header)')];
+      const edgeGroups = [...svgRoot.querySelectorAll('g.edge')];
+      const titleOf = group => group.querySelector('title')?.textContent || '';
+      const nodes = new Map(nodeGroups.map(group => [titleOf(group), group]));
+      const parent = new Map(), children = new Map(), edgeByChild = new Map();
+
+      for (const edge of edgeGroups) {
+        const [from, to] = titleOf(edge).split('->');
+        if (!from || !to) continue;
+        parent.set(to, from);
+        if (!children.has(from)) children.set(from, []);
+        children.get(from).push(to);
+        edgeByChild.set(to, edge);
+      }
+
+      const relationCache = new Map();
+      function relatedElements(focusName) {
+        if (relationCache.has(focusName)) return relationCache.get(focusName);
+        const relatedNames = new Set([focusName]);
+        const relatedEdges = new Set();
+        let child = focusName;
+        let ancestor = parent.get(child);
+        while (ancestor) {
+          relatedNames.add(ancestor);
+          const edge = edgeByChild.get(child);
+          if (edge) relatedEdges.add(edge);
+          child = ancestor;
+          ancestor = parent.get(child);
+        }
+        const pending = [...(children.get(focusName) || [])];
+        while (pending.length) {
+          const descendant = pending.pop();
+          if (relatedNames.has(descendant)) continue;
+          relatedNames.add(descendant);
+          const edge = edgeByChild.get(descendant);
+          if (edge) relatedEdges.add(edge);
+          pending.push(...(children.get(descendant) || []));
+        }
+        const relation = {
+          nodes: [...relatedNames].map(name => nodes.get(name)).filter(Boolean),
+          edges: [...relatedEdges]
+        };
+        relationCache.set(focusName, relation);
+        return relation;
+      }
+
+      let activeName = null, activeNodes = [], activeEdges = [];
+      let pendingName = null, animationFrame = null;
+      function applyHighlight(focusName) {
+        if (focusName === activeName) return;
+        for (const group of activeNodes) group.classList.remove('related-node', 'focus-node');
+        for (const edge of activeEdges) edge.classList.remove('related-edge');
+        activeNodes = []; activeEdges = []; activeName = focusName;
+
+        if (!focusName) {
+          svgRoot.classList.remove('is-highlighting');
+          return;
+        }
+        const relation = relatedElements(focusName);
+        activeNodes = relation.nodes;
+        activeEdges = relation.edges;
+        svgRoot.classList.add('is-highlighting');
+        for (const group of activeNodes) group.classList.add('related-node');
+        for (const edge of activeEdges) edge.classList.add('related-edge');
+        nodes.get(focusName)?.classList.add('focus-node');
+      }
+
+      function scheduleHighlight(focusName) {
+        pendingName = focusName;
+        if (animationFrame !== null) return;
+        animationFrame = requestAnimationFrame(() => {
+          animationFrame = null;
+          applyHighlight(pendingName);
+        });
+      }
+
+      for (const [name, group] of nodes) {
+        group.setAttribute('tabindex', '0');
+        group.setAttribute('aria-label', `${name}: hover to highlight ancestors and descendants`);
+      }
+      const eventNode = event => event.target.closest?.('g.node:not(.depth-header)');
+      svgRoot.addEventListener('pointerover', event => {
+        const group = eventNode(event);
+        if (group) scheduleHighlight(titleOf(group));
+      });
+      svgRoot.addEventListener('pointerleave', () => scheduleHighlight(null));
+      svgRoot.addEventListener('focusin', event => {
+        const group = eventNode(event);
+        if (group) scheduleHighlight(titleOf(group));
+      });
+      svgRoot.addEventListener('focusout', event => {
+        const nextGroup = event.relatedTarget?.closest?.('g.node:not(.depth-header)');
+        scheduleHighlight(nextGroup ? titleOf(nextGroup) : null);
+      });
+    }
+
+    async function showInteractiveGraph(svgUrl) {
+      const response = await fetch(`${svgUrl}?t=${Date.now()}`);
+      if (!response.ok) throw new Error('Could not load the rendered SVG');
+      const source = await response.text();
+      const documentSvg = new DOMParser().parseFromString(source, 'image/svg+xml');
+      const parseError = documentSvg.querySelector('parsererror');
+      if (parseError) throw new Error('The rendered SVG could not be parsed');
+      const inlineSvg = document.importNode(documentSvg.documentElement, true);
+      inlineSvg.setAttribute('role', 'img');
+      inlineSvg.setAttribute('aria-label', 'Interactive radix tree');
+      canvas.replaceChildren(inlineSvg);
+      makeGraphInteractive(inlineSvg);
+    }
+
+    async function loadTraces() {
+      try {
+        const response = await fetch('/api/traces');
+        const data = await response.json();
+        trace.innerHTML = data.traces.map(item =>
+          `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)} (${comma(item.bytes)} bytes)</option>`).join('');
+        format.innerHTML = data.formats.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+        status.textContent = data.traces.length ? `${data.traces.length} trace(s) available.` : 'No supported traces found in the configured directories.';
+        plot.disabled = !data.traces.length;
+      } catch (error) { status.className = 'error'; status.textContent = error.message; plot.disabled = true; }
+    }
+
+    plot.addEventListener('click', async () => {
+      plot.disabled = true; status.className = ''; status.textContent = 'Building and validating the radix tree…';
+      svg.setAttribute('aria-disabled', 'true'); png.setAttribute('aria-disabled', 'true');
+      const payload = {
+        trace: trace.value, trace_format: format.value,
+        max_nodes: byId('maxNodes').value,
+        max_nodes_per_depth: byId('maxDepthNodes').value,
+        block_size: byId('blockSize').value
+      };
+      try {
+        const response = await fetch('/api/plot', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Plot failed');
+        await showInteractiveGraph(data.svg_url);
+        svg.href = data.svg_url; svg.download = data.svg_url.split('/').pop(); svg.setAttribute('aria-disabled', 'false');
+        png.href = data.png_url; png.download = data.png_url.split('/').pop(); png.setAttribute('aria-disabled', 'false');
+        const estimated = data.token_size_semantics.startsWith('estimated');
+        summary.innerHTML = `<span>Trace <b>${escapeHtml(data.trace)}</b></span><span>Requests <b>${comma(data.total_requests)}</b></span><span>Full nodes <b>${comma(data.full_tree_nodes)}</b></span><span>Displayed <b>${comma(data.displayed_nodes)}</b></span><span>Unit ≤ <b>${comma(data.maximum_radix_unit_size_tokens)} ${estimated ? 'estimated ' : ''}tokens</b></span><span>Priority <b>${escapeHtml(data.priority)}</b></span>`;
+        status.textContent = `${estimated ? 'Message-derived sizes are estimates. ' : ''}Rendered ${comma(data.displayed_nodes)} connected nodes. Hover a node to highlight all ancestors and descendants.`;
+      } catch (error) { status.className = 'error'; status.textContent = error.message; }
+      finally { plot.disabled = false; }
+    });
+    loadTraces();
+  </script>
+</body>
+</html>
