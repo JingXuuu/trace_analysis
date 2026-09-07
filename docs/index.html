@@ -200,6 +200,51 @@
       });
     }
 
+
+    function styleDepthHeaders(svgRoot) {
+      const ns = 'http://www.w3.org/2000/svg';
+      const rect = (x, y, width, height, fill, stroke = 'none') => {
+        const element = document.createElementNS(ns, 'rect');
+        for (const [key, value] of Object.entries({x, y, width, height, rx:4, fill, stroke}))
+          element.setAttribute(key, value);
+        return element;
+      };
+      for (const group of svgRoot.querySelectorAll('g.depth-header')) {
+        const texts = [...group.querySelectorAll('text')];
+        if (texts.length !== 4) continue;
+        const box = group.getBBox();
+        const background = rect(box.x-9, box.y-7, box.width+18, box.height+14, '#fffaf4', '#d9c9b8');
+        group.insertBefore(background, group.firstChild);
+        const accent = rect(box.x-9, box.y-7, 3, box.height+14, '#70845d');
+        group.insertBefore(accent, texts[0]);
+        texts[0].setAttribute('fill', '#8c5e3c');
+        texts[0].setAttribute('font-weight', 'bold');
+        texts[2].setAttribute('fill', '#3d342d');
+        texts[2].setAttribute('font-weight', 'bold');
+        texts[3].setAttribute('fill', '#786b60');
+        const parts = texts[1].textContent.split('|').map(value => value.trim());
+        if (parts.length !== 2) continue;
+        const baseline = Number(texts[1].getAttribute('y'));
+        const half = box.width / 2;
+        for (let index = 0; index < 2; index++) {
+          const xx = box.x + index * half;
+          group.insertBefore(rect(xx-2, baseline-10, half-4, 13,
+            index ? '#efe1d4' : '#e3eadc'), texts[1]);
+          const label = document.createElementNS(ns, 'text');
+          label.setAttribute('x', xx+2);
+          label.setAttribute('y', baseline);
+          label.setAttribute('font-family', 'DejaVu Sans');
+          label.setAttribute('font-size', '9');
+          label.setAttribute('font-weight', 'bold');
+          label.setAttribute('fill', index ? '#8c5e3c' : '#4e5d43');
+          // Preserve the delimiter for the full-depth count parser and accessibility.
+          label.textContent = (index ? ' | ' : '') + parts[index];
+          group.insertBefore(label, texts[1]);
+        }
+        texts[1].remove();
+      }
+    }
+
     async function showInteractiveGraph(svgUrl) {
       const response = await fetch(`${svgUrl}?t=${Date.now()}`);
       if (!response.ok) throw new Error('Could not load the rendered SVG');
@@ -212,6 +257,7 @@
       inlineSvg.setAttribute('aria-label', 'Interactive radix tree');
       canvas.replaceChildren(inlineSvg);
       makeGraphInteractive(inlineSvg);
+      styleDepthHeaders(inlineSvg);
     }
 
     let traceCatalog = [];
