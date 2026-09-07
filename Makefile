@@ -4,7 +4,7 @@ OUTPUT_DIR ?= artifacts/mooncake
 SGLANG_PYTHON_ROOT ?= ../sglang/python
 PRIORITY ?= depth
 
-.PHONY: analyze analyze-short web download-traces test clean-generated
+.PHONY: analyze analyze-short web download-traces test
 
 analyze:
 	FLASHINFER_WORKSPACE_BASE=/tmp/flashinfer-work MPLCONFIGDIR=/tmp/matplotlib-cache PYTHONPATH=src SGLANG_PYTHON_ROOT=$(SGLANG_PYTHON_ROOT) $(PYTHON) -m trace_analysis $(TRACE) --output-dir $(OUTPUT_DIR) --output-prefix mooncake --priority $(PRIORITY)
@@ -20,6 +20,3 @@ download-traces:
 
 test:
 	PYTHONPATH=src $(PYTHON) -m unittest discover -s tests -v
-
-clean-generated:
-	@echo "Generated outputs are retained intentionally; remove a specific output directory manually."

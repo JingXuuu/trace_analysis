@@ -1,5 +1,32 @@
 # Deployment
 
+## GitHub Pages (static preview)
+
+The `docs/` website contains pre-rendered trees for all available traces using
+depth-first selection, at most 1,000 nodes in total and 16 per depth. Trace
+switching, hover highlighting, reuse charts, and SVG/PNG downloads work entirely
+in the browser. Settings are fixed; use the Python server for editable plots.
+
+To regenerate on a machine with the datasets and SGLang installed:
+
+```bash
+./scripts/prepare_reuse.sh
+./scripts/export_site.sh
+```
+
+The first export builds and validates every full trace; subsequent exports reuse
+saved default renders when the source files have not changed. Pass `--force`
+after changing the tree-building or rendering code. Commit `docs/`
+after exporting. Raw traces and the Python runtime are not shipped in the site.
+
+On GitHub, select **Settings → Pages → Build and deployment → Source → GitHub
+Actions**. The included Pages workflow deploys `docs/` when its files change on
+`main`, or when triggered manually. The expected project address is
+`https://jingxuuu.github.io/trace_analysis/` after successful deployment.
+
+Preview locally with `python -m http.server 9001 --directory docs`, then open
+`http://localhost:9001`. All asset URLs are relative so project subpaths work.
+
 ## Git repository contents
 
 Source code, tests, configuration, dataset cards, and dataset checksums are

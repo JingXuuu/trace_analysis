@@ -7,6 +7,8 @@ import json
 import re
 import shutil
 import threading
+import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -31,6 +33,7 @@ from .formats import (
     supported_suffixes,
     token_size_semantics,
 )
+from .reuse import reuse_path
 
 
 @dataclass(slots=True)
@@ -87,12 +90,14 @@ class AnalysisService:
                 seen.add(resolved)
                 relative = path.relative_to(directory).as_posix()
                 trace_id = f"{directory_index}:{relative}"
+                reuse = reuse_path(path, self.output_dir)
                 result.append(
                     {
                         "id": trace_id,
                         "name": relative,
                         "directory": str(directory),
                         "bytes": sum(member.stat().st_size for member in members),
+                        "reuse_url": f"/generated/{reuse.name}" if reuse.is_file() else None,
                     }
                 )
         return result
@@ -122,6 +127,17 @@ class AnalysisService:
 
     def plot(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Build or reuse a full tree and render one selected view."""
+        started = time.perf_counter()
+        timings = dict.fromkeys(("load", "build", "validate", "statistics"), 0.0)
+
+        @contextmanager
+        def timed(stage):
+            stage_start = time.perf_counter()
+            try:
+                yield
+            finally:
+                timings[stage] = time.perf_counter() - stage_start
+
         trace_file = self.resolve_trace(str(payload.get("trace", "")))
         max_nodes = self._integer_setting(payload, "max_nodes", 1000, 20_000)
         max_per_depth = self._integer_setting(
@@ -141,14 +157,22 @@ class AnalysisService:
             block_size,
             trace_format,
         )
+        timings["prepare"] = time.perf_counter() - started
+        waiting = time.perf_counter()
         with self._lock:
-            if self._cached_tree is None or self._cached_tree.key != cache_key:
-                (rows, block_sizes, _), selected_format = load_trace(
-                    trace_file, block_size, trace_format
-                )
-                cache = build_sglang_radix_cache(rows)
-                validation = validate_sglang_tree(cache, rows, block_sizes)
-                depth_statistics = collect_depth_statistics(cache, len(rows))
+            timings["queue"] = time.perf_counter() - waiting
+            cache_hit = self._cached_tree is not None and self._cached_tree.key == cache_key
+            if not cache_hit:
+                with timed("load"):
+                    (rows, block_sizes, _), selected_format = load_trace(
+                        trace_file, block_size, trace_format
+                    )
+                with timed("build"):
+                    cache = build_sglang_radix_cache(rows)
+                with timed("validate"):
+                    validation = validate_sglang_tree(cache, rows, block_sizes)
+                with timed("statistics"):
+                    depth_statistics = collect_depth_statistics(cache, len(rows))
                 self._cached_tree = CachedTree(
                     key=cache_key,
                     cache=cache,
@@ -161,6 +185,7 @@ class AnalysisService:
                 )
 
             tree = self._cached_tree
+            selection_start = time.perf_counter()
             nodes, displayed_by_depth = select_graph_nodes(
                 tree.cache,
                 tree.block_sizes,
@@ -168,6 +193,8 @@ class AnalysisService:
                 max_nodes_per_depth=max_per_depth,
                 priority=priority,
             )
+            timings["selection"] = time.perf_counter() - selection_start
+            layout_start = time.perf_counter()
             token_label = (
                 "est. tokens" if tree.trace_format == "lmcache_messages" else "tokens"
             )
@@ -177,16 +204,19 @@ class AnalysisService:
                 tree.depth_statistics,
                 token_label=token_label,
             )
+            timings["graph_description"] = time.perf_counter() - layout_start
             safe_stem = re.sub(r"[^A-Za-z0-9_.-]+", "_", trace_file.stem)
             output_stem = (
                 f"{safe_stem}_{priority}_nodes-{max_nodes}_depth-{max_per_depth}"
             )
             svg_file = self.output_dir / f"{output_stem}.svg"
             png_file = self.output_dir / f"{output_stem}.png"
-            render_graph(dot, svg_file, "svg")
-            render_graph(dot, png_file, "png")
+            with timed("svg"):
+                render_graph(dot, svg_file, "svg")
+            with timed("png"):
+                render_graph(dot, png_file, "png")
 
-        return {
+        result = {
             "trace": trace_file.name,
             "trace_format": tree.trace_format,
             "priority": priority,
@@ -202,6 +232,10 @@ class AnalysisService:
             "svg_url": f"/generated/{svg_file.name}",
             "png_url": f"/generated/{png_file.name}",
         }
+        timings["total"] = time.perf_counter() - started
+        result["timings_seconds"] = timings
+        result["tree_cache_hit"] = cache_hit
+        return result
 
 
 class RequestHandler(BaseHTTPRequestHandler):

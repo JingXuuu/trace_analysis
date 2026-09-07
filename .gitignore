@@ -12,3 +12,5 @@ dist/
 /traces/external/**/.cache/
 /traces/external/**/*.parquet
 /traces/external/**/traces.jsonl
+# Local CLI exports and web caches; publish only the curated docs/ site.
+/artifacts/

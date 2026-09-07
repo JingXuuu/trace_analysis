@@ -1,0 +1,20 @@
+{
+  "trace": "mooncake_trace_1000.jsonl",
+  "trace_format": "mooncake",
+  "priority": "depth",
+  "maximum_radix_unit_size_tokens": 512,
+  "token_size_semantics": "native_trace_tokens",
+  "total_requests": 1000,
+  "full_tree_nodes": 1068,
+  "displayed_nodes": 40,
+  "displayed_nodes_by_depth": {
+    "1": 3,
+    "2": 16,
+    "3": 14,
+    "4": 4,
+    "5": 2
+  },
+  "svg_url": "./assets/tree-e47f4884c69188cf1b892353.svg",
+  "png_url": "./assets/tree-e47f4884c69188cf1b892353.png",
+  "tree_cache_hit": false
+}

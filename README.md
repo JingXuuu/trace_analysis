@@ -20,8 +20,7 @@ is tracked separately.
   hashes.
 - [`traces/external/lmcache-agentic-traces/data/`](https://huggingface.co/datasets/zeelHz/lmcache-agentic-traces): five message-level Parquet
   shards containing 24,880 requests.
-- `artifacts/mooncake/reference/`: previously rendered SGLang SVG/PNG images and
-  hit-count data.
+- `docs/`: current pre-rendered trees and reuse charts for the static website.
 
 The external data can be restored or updated reproducibly with `make
 download-traces PYTHON=/home/jingxu/miniconda3/envs/sgl0514/bin/python3.12`.
@@ -119,6 +118,27 @@ opened remotely when the host firewall permits it.
 
 ## Outputs
 
+Prepare full-tree reuse histograms offline for every available trace:
+
+```bash
+./scripts/prepare_reuse.sh
+```
+
+The selected trace's reuse charts appear above the tree after refreshing the
+page, without rebuilding the tree. Hit counts are grouped into 1, 2–3, 4–7,
+8–15, and successive doubling ranges. One chart counts nodes; the other sums
+stored segment tokens (not multiplied by hit count). Summary cards show total
+nodes, total tokens, shared-node percentage, and shared-token percentage.
+Shared means hit count > 1; the root is excluded. LMCache token sizes are
+explicitly estimated. All LMCache
+shards count as one trace. SVG, PNG, and CSV files are saved in `artifacts/web`.
+Use `--output-dir` to match a custom web output directory. Existing plots are
+reused; use `--force` to regenerate. Changed source files get a new cache key.
+Use `--replot` to redraw charts from saved counts without rebuilding the trees.
+Local `artifacts/` outputs are ignored by Git; only the current static site in
+`docs/` is published.
+Full CC and LMCache preparation can take several minutes and substantial RAM.
+
 Every run writes:
 
 - `*_radix_tree_full.json`: the complete parent-linked radix tree, excluding
@@ -165,6 +185,12 @@ graph limits, parent-preserving selection, correct parent edges, complete-tree
 parent links, color semantics, and hit-count accounting.
 
 ## Deploy
+
+For GitHub Pages, pre-render the default trees with `./scripts/export_site.sh`.
+The generated `docs/` site supports trace selection, hover highlighting, reuse
+charts, and downloads without a backend. See the GitHub Pages section in
+[DEPLOYMENT.md](DEPLOYMENT.md) for setup. Graph settings remain editable in the
+Python web server; they are fixed in the static preview.
 
 The repository includes a Dockerfile, Compose configuration, health endpoint,
 environment template, ignored/reproducible external data, and GitHub Actions
