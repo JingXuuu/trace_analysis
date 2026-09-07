@@ -74,6 +74,27 @@ detection.
 
 ## Interactive web plotter
 
+Use the launcher to automatically select the existing Python environment and
+sibling SGLang checkout:
+
+```bash
+./scripts/run_web.sh --port 9000
+```
+
+Open `http://<server-ip>:9000` (or `http://localhost:9000` on the server).
+Stop with Ctrl+C. Without `--port`, the default is 8080. The launcher works from
+any working directory, with relative trace/output paths resolved from the repo.
+It does not install dependencies. On a new machine, follow [DEPLOYMENT.md](DEPLOYMENT.md).
+Override the Python environment when needed:
+
+```bash
+PYTHON=/path/to/python SGLANG_PYTHON_ROOT=/path/to/sglang/python \
+  ./scripts/run_web.sh --port 9000
+```
+
+Use `./scripts/run_web.sh --help` for options including `--host`, `--trace-dir`,
+and `--output-dir`.
+
 Start the local web UI with:
 
 ```bash
