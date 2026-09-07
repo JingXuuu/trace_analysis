@@ -35,6 +35,9 @@
     .viewer { min-width:0; display:flex; flex-direction:column; overflow:hidden; }
     .summary { display:flex; flex-wrap:wrap; gap:18px; padding:14px 18px; border-bottom:1px solid var(--line); font-size:13px; color:var(--muted); }
     .summary b { color:var(--ink); }
+    #traceDetails { padding:16px 18px; border-bottom:1px solid var(--line); background:var(--cream); }
+    #traceDetails h2 { margin:0 0 8px; font-size:17px; color:var(--cocoa); }
+    #traceDetails p { margin:6px 0; font-size:14px; line-height:1.55; }
     #timing { padding:12px 18px; border-bottom:1px solid var(--line); font-size:14px; color:var(--muted); }
     #timing .timing-stages { display:flex; flex-wrap:wrap; gap:8px 20px; margin-top:8px; font-size:13px; }
     #timing b { color:var(--ink); font-variant-numeric:tabular-nums; }
@@ -80,6 +83,7 @@
       <div id="status">Loading available traces…</div>
     </aside>
     <section class="viewer">
+      <section id="traceDetails" aria-label="Trace hashing and prefix sharing" aria-live="polite"></section>
       <div id="summary" class="summary"><span>No graph generated yet.</span></div>
       <div id="timing" hidden aria-live="polite"></div>
       <section id="distribution" aria-label="Hit-count distribution">
@@ -211,7 +215,32 @@
     }
 
     let traceCatalog = [];
+    function showTraceDetails(data = null) {
+      const selected = traceCatalog.find(item => item.id === trace.value);
+      const name = selected?.name || '';
+      const kind = data?.trace_format || selected?.plot?.trace_format ||
+        (name.includes('lmcache-agentic-traces') ? 'lmcache_messages' :
+         name.includes('cc-traces-weka') ? 'semianalysis_cc' :
+         name.includes('mooncake') ? 'mooncake' : '');
+      const explanations = {
+        mooncake: 'Uses shared block IDs across requests. Depth-1 branches represent distinct initial blocks, not necessarily different system prompts.',
+        lmcache_messages: 'Uses generated message-level IDs. Identical first system messages for the same model share a branch across sessions and shards.',
+        semianalysis_cc: 'IDs are scoped to each session and model. Identical system prompts across sessions remain separate, so more branches do not necessarily mean more diverse prompts.'
+      };
+      let count = data?.depth_one_nodes;
+      if (data && count == null) {
+        // Older pre-rendered exports retain full-depth statistics in SVG headers.
+        const header = [...canvas.querySelectorAll('g.depth-header')].find(group =>
+          [...group.querySelectorAll('text')].some(text => text.textContent === 'Depth 1'));
+        const match = header?.textContent.match(/total nodes=([\d,]+)/);
+        if (match) count = Number(match[1].replaceAll(',', ''));
+      }
+      byId('traceDetails').innerHTML = '<h2>Hashing &amp; prefix sharing</h2>' +
+        (count != null ? `<p><b>Depth 1: ${comma(count)} branches in the full tree</b> · Before display limits.</p>` : '') +
+        `<p>${escapeHtml(explanations[kind] || 'Build this trace to identify its hashing scope.')}</p>`;
+    }
     function showReuse() {
+      showTraceDetails();
       const selected = traceCatalog.find(item => item.id === trace.value);
       const img = byId('reuseImage'), note = byId('reuseStatus');
       img.hidden = true;
@@ -294,6 +323,7 @@
         svg.href = data.svg_url; svg.download = data.svg_url.split('/').pop(); svg.setAttribute('aria-disabled', 'false');
         png.href = data.png_url; png.download = data.png_url.split('/').pop(); png.setAttribute('aria-disabled', 'false');
         const estimated = data.token_size_semantics.startsWith('estimated');
+        showTraceDetails(data);
         summary.innerHTML = `<span>Trace <b>${escapeHtml(data.trace)}</b></span><span>Requests <b>${comma(data.total_requests)}</b></span><span>Full nodes <b>${comma(data.full_tree_nodes)}</b></span><span>Displayed <b>${comma(data.displayed_nodes)}</b></span><span>Unit ≤ <b>${comma(data.maximum_radix_unit_size_tokens)} ${estimated ? 'estimated ' : ''}tokens</b></span><span>Priority <b>${escapeHtml(data.priority)}</b></span>`;
         status.textContent = `${estimated ? 'Message-derived sizes are estimates. ' : ''}Rendered ${comma(data.displayed_nodes)} connected nodes. Hover a node to highlight all ancestors and descendants.`;
         if (STATIC_MODE) {

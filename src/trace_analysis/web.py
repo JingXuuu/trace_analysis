@@ -228,6 +228,7 @@ class AnalysisService:
             ]
             + 1,
             "displayed_nodes": len(nodes) + 1,
+            "depth_one_nodes": len(tree.cache.root_node.children),
             "displayed_nodes_by_depth": displayed_by_depth,
             "svg_url": f"/generated/{svg_file.name}",
             "png_url": f"/generated/{png_file.name}",
