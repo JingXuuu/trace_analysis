@@ -22,19 +22,20 @@ is tracked separately.
   shards containing 24,880 requests.
 - `docs/`: current pre-rendered trees and reuse charts for the static website.
 
-The external data can be restored or updated reproducibly with `make
-download-traces PYTHON=/home/jingxu/miniconda3/envs/sgl0514/bin/python3.12`.
+The external data can be restored or updated reproducibly with
+`make download-traces` after installing the download dependencies described in
+[DEPLOYMENT.md](DEPLOYMENT.md).
 Repository revisions and expected SHA-256 hashes are recorded in
 `traces/external/SOURCES.json`. The multi-gigabyte data files remain ignored by
 Git.
 
 ## Run it
 
-The current workspace already has the required SGLang checkout and Python
-environment:
+Set up Python, SGLang, and Graphviz as described in
+[DEPLOYMENT.md](DEPLOYMENT.md), then analyze the included Mooncake trace:
 
 ```bash
-make analyze PYTHON=/home/jingxu/miniconda3/envs/sgl0514/bin/python3.12
+make analyze PYTHON=python3
 ```
 
 For another trace or checkout:
@@ -73,11 +74,10 @@ detection.
 
 ## Interactive web plotter
 
-Use the launcher to automatically select the existing Python environment and
-sibling SGLang checkout:
+After installing the dependencies, start the web plotter:
 
 ```bash
-./scripts/run_web.sh --port 9000
+PYTHON=python3 ./scripts/run_web.sh --port 9000
 ```
 
 Open `http://<server-ip>:9000` (or `http://localhost:9000` on the server).
@@ -94,13 +94,7 @@ PYTHON=/path/to/python SGLANG_PYTHON_ROOT=/path/to/sglang/python \
 Use `./scripts/run_web.sh --help` for options including `--host`, `--trace-dir`,
 and `--output-dir`.
 
-Start the local web UI with:
-
-```bash
-make web PYTHON=/home/jingxu/miniconda3/envs/sgl0514/bin/python3.12
-```
-
-Then open `http://localhost:8080`. The page lets you select any supported trace
+The page lets you select any supported trace
 under `traces/`, edit the whole-tree and per-depth limits, change the block size,
 and plot with depth-first priority. It renders in the page
 and provides direct SVG and PNG downloads. Hovering a displayed node highlights
