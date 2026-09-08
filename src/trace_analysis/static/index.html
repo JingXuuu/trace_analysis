@@ -49,6 +49,9 @@
     #timing .timing-stages { display:flex; flex-wrap:wrap; gap:8px 20px; margin-top:8px; font-size:13px; }
     #timing b { color:var(--ink); font-variant-numeric:tabular-nums; }
     #canvas { flex:1; min-height:650px; padding:16px; overflow:auto; background:linear-gradient(145deg,#fffdf9,#f7f0e7); }
+    #routeGuide { padding:12px 18px; border-bottom:1px solid var(--line); background:var(--cream); font-size:14px; color:var(--muted); }
+    #routeStatus { display:inline-block; margin-right:12px; padding:5px 10px; border-radius:6px; background:#e3eadc; color:#465538; font-weight:700; }
+    #routeStatus[data-locked="true"] { background:#efe1d4; color:#8c5e3c; }
     #distribution { padding:14px 18px; border-bottom:1px solid var(--line); }
     #distribution img { display:block; width:100%; max-width:1800px; height:auto; }
     #distribution p { font-size:14px; color:var(--muted); }
@@ -98,6 +101,10 @@
         <p id="reuseStatus">Choose a trace to view its reuse summary.</p>
         <img id="reuseImage" hidden alt="Side-by-side charts separated by a line: node counts by hit-count range, and node counts by compressed radix depth. Both use the complete tree, excluding root.">
       </section>
+      <div id="routeGuide" hidden>
+        <span id="routeStatus" role="status" aria-live="polite" data-locked="false">Unlocked · Hover enabled</span>
+        <span>Click a node to lock its route. Click any highlighted node or line again to unlock.</span>
+      </div>
       <div id="canvas"><div class="empty">Choose a trace and settings, then build the tree.</div></div>
     </section>
   </main>
@@ -110,7 +117,8 @@
     const comma = value => Number(value).toLocaleString();
     const escapeHtml = value => String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
 
-    function makeGraphInteractive(svgRoot) {
+    function makeGraphInteractive(svgRoot, onLockChange = () => {}) {
+      onLockChange(false);
       const nodeGroups = [...svgRoot.querySelectorAll('g.node:not(.depth-header)')];
       const edgeGroups = [...svgRoot.querySelectorAll('g.edge')];
       const titleOf = group => group.querySelector('title')?.textContent || '';
@@ -158,6 +166,7 @@
       }
 
       let activeName = null, activeNodes = [], activeEdges = [];
+      let lockedName = null;
       let pendingName = null, animationFrame = null;
       function applyHighlight(focusName) {
         if (focusName === activeName) return;
@@ -179,19 +188,49 @@
       }
 
       function scheduleHighlight(focusName) {
+        if (lockedName !== null) return;
         pendingName = focusName;
         if (animationFrame !== null) return;
         animationFrame = requestAnimationFrame(() => {
           animationFrame = null;
-          applyHighlight(pendingName);
+          if (lockedName === null) applyHighlight(pendingName);
         });
       }
 
       for (const [name, group] of nodes) {
         group.setAttribute('tabindex', '0');
-        group.setAttribute('aria-label', `${name}: hover to highlight ancestors and descendants`);
+        group.setAttribute('role', 'button');
+        group.setAttribute('aria-pressed', 'false');
+        group.setAttribute('aria-label', `${name}: hover to highlight ancestors and descendants; click to lock, click the highlighted route to unlock`);
       }
       const eventNode = event => event.target.closest?.('g.node:not(.depth-header)');
+      function toggleLock(event) {
+        const group = eventNode(event);
+        const edge = event.target.closest?.('g.edge');
+        if (lockedName !== null) {
+          if (!activeNodes.includes(group) && !activeEdges.includes(edge)) return;
+          nodes.get(lockedName)?.setAttribute('aria-pressed', 'false');
+          lockedName = null;
+          svgRoot.classList.remove('is-locked');
+          applyHighlight(null);
+        } else if (group) {
+          lockedName = titleOf(group);
+          applyHighlight(lockedName);
+          group.setAttribute('aria-pressed', 'true');
+          svgRoot.classList.add('is-locked');
+        } else return;
+        if (animationFrame !== null) cancelAnimationFrame(animationFrame);
+        animationFrame = null;
+        pendingName = null;
+        onLockChange(lockedName !== null);
+      }
+      svgRoot.addEventListener('click', toggleLock);
+      svgRoot.addEventListener('keydown', event => {
+        if ((event.key === 'Enter' || event.key === ' ') && eventNode(event)) {
+          event.preventDefault();
+          toggleLock(event);
+        }
+      });
       svgRoot.addEventListener('pointerover', event => {
         const group = eventNode(event);
         if (group) scheduleHighlight(titleOf(group));
@@ -273,7 +312,12 @@
       inlineSvg.setAttribute('role', 'img');
       inlineSvg.setAttribute('aria-label', 'Interactive radix tree');
       canvas.replaceChildren(inlineSvg);
-      makeGraphInteractive(inlineSvg);
+      makeGraphInteractive(inlineSvg, locked => {
+        byId('routeGuide').hidden = false;
+        const indicator = byId('routeStatus');
+        indicator.dataset.locked = String(locked);
+        indicator.textContent = locked ? 'Locked · Hover paused' : 'Unlocked · Hover enabled';
+      });
       styleDepthHeaders(inlineSvg);
     }
 
@@ -393,7 +437,7 @@
         const estimated = data.token_size_semantics.startsWith('estimated');
         showTraceDetails(data);
         summary.innerHTML = `<span>Trace <b>${escapeHtml(data.trace)}</b></span><span>Requests <b>${comma(data.total_requests)}</b></span><span>Full nodes <b>${comma(data.full_tree_nodes)}</b></span><span>Displayed <b>${comma(data.displayed_nodes)}</b></span><span>Unit ≤ <b>${comma(data.maximum_radix_unit_size_tokens)} ${estimated ? 'estimated ' : ''}tokens</b></span><span>Priority <b>${escapeHtml(data.priority)}</b></span>`;
-        status.textContent = `${estimated ? 'Message-derived sizes are estimates. ' : ''}Rendered ${comma(data.displayed_nodes)} connected nodes. Hover a node to highlight all ancestors and descendants.`;
+        status.textContent = `${estimated ? 'Message-derived sizes are estimates. ' : ''}Rendered ${comma(data.displayed_nodes)} connected nodes. Hover to highlight; click to lock the route. Click the highlighted route again to unlock.`;
         if (STATIC_MODE) {
           timing.textContent = `Pre-rendered offline · Loaded in ${duration((performance.now() - buildStarted) / 1000)}`;
           status.textContent = 'Static preview · Depth first · 1,000 total nodes max · 16 nodes per depth max. Hover to explore; download SVG or PNG.';
