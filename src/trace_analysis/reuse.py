@@ -86,29 +86,25 @@ def main() -> None:
         shared_nodes = total_nodes - distribution.get(1, 0)
         shared_tokens = total_tokens - token_distribution.get(1, 0)
         estimated = trace_format == 'lmcache_messages'
-        token_label = 'Estimated tokens' if estimated else ('Component tokens' if trace_format == 'ragpulse' else 'Tokens')
-        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-        fig.subplots_adjust(top=.68, bottom=.26, left=.08, right=.98, wspace=.25)
+        fig, ax = plt.subplots(figsize=(12, 5))
+        fig.subplots_adjust(top=.68, bottom=.26, left=.09, right=.98)
         fig.set_facecolor('#fffaf4')
-        for ax, values, title, ylabel in zip(axes, (counts, token_counts),
-                ('Nodes by reuse', 'Stored tokens by reuse'), ('Number of radix nodes', token_label)):
-            ax.set_facecolor('#fffaf4')
-            bars = ax.bar(range(len(labels)), values, color=['#cbb196'] + ['#70845d'] * (len(labels)-1))
-            ax.bar_label(bars, labels=[f'{value:,}' for value in values], padding=4,
-                         fontsize=8, rotation=90 if len(labels) > 6 else 0, color='#3d342d')
-            ax.set_ylim(0, max(max(values, default=0), 1) * 1.6)
-            ax.set_xticks(range(len(labels)), labels, rotation=50, ha='right', fontsize=9)
-            ax.set_xlabel('Hit-count range')
-            ax.set_ylabel(ylabel)
-            ax.set_title(title, color='#3d342d')
-            ax.grid(axis='y', alpha=.2, color='#8c5e3c')
-            ax.set_axisbelow(True)
-        fig.suptitle(f"{path.name} · Radix cache reuse", y=.98, color='#3d342d', fontsize=16)
-        summaries = [('Total nodes', f'{total_nodes:,}'), (f'Total {token_label.lower()}', f'{total_tokens:,}'),
-                     ('Shared nodes', f'{shared_nodes / total_nodes:.1%}' if total_nodes else '0.0%'),
-                     ('Shared tokens', f'{shared_tokens / total_tokens:.1%}' if total_tokens else '0.0%')]
+        ax.set_facecolor('#fffaf4')
+        bars = ax.bar(range(len(labels)), counts, color=['#cbb196'] + ['#70845d'] * (len(labels)-1))
+        ax.bar_label(bars, labels=[f'{value:,}' for value in counts], padding=4,
+                     fontsize=9, rotation=90 if len(labels) > 12 else 0, color='#3d342d')
+        ax.set_ylim(0, max(max(counts, default=0), 1) * 1.6)
+        ax.set_xticks(range(len(labels)), labels, rotation=50, ha='right', fontsize=9)
+        ax.set_xlabel('Hit-count range')
+        ax.set_ylabel('Number of radix nodes')
+        ax.grid(axis='y', alpha=.2, color='#8c5e3c')
+        ax.set_axisbelow(True)
+        fig.suptitle(f"{path.name} · Node reuse", y=.98, color='#3d342d', fontsize=16)
+        summaries = [('Total nodes', f'{total_nodes:,}'),
+                     ('Shared nodes', f'{shared_nodes:,}'),
+                     ('Shared-node ratio', f'{shared_nodes / total_nodes:.1%}' if total_nodes else '0.0%')]
         for index, (label, value) in enumerate(summaries):
-            fig.text(.15 + index * .235, .83, f'{label}\n{value}', ha='center', fontsize=13,
+            fig.text(.2 + index * .3, .83, f'{label}\n{value}', ha='center', fontsize=13,
                      color='#3d342d', bbox=dict(boxstyle='round,pad=.5', facecolor='#f2e9df', edgecolor='#d9c9b8'))
         fig.text(.5, .02, 'Full tree · Root excluded · Shared = hit count > 1 · Sand: single-use; green: shared',
                  ha='center', fontsize=10, color='#786b60')

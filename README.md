@@ -146,11 +146,10 @@ Prepare full-tree reuse histograms offline for every available trace:
 ./scripts/prepare_reuse.sh
 ```
 
-The selected trace's reuse charts appear above the tree after refreshing the
+The selected trace's node-reuse chart appears above the tree after refreshing the
 page, without rebuilding the tree. Hit counts are grouped into 1, 2–3, 4–7,
-8–15, and successive doubling ranges. One chart counts nodes; the other sums
-stored segment tokens (not multiplied by hit count). Summary cards show total
-nodes, total tokens, shared-node percentage, and shared-token percentage.
+8–15, and successive doubling ranges. Bars show exact node counts. Summary
+cards show total nodes, shared nodes, and the shared-node percentage.
 Shared means hit count > 1; the root is excluded. LMCache token sizes are
 explicitly estimated. All LMCache
 shards count as one trace. SVG, PNG, and CSV files are saved in `artifacts/web`.

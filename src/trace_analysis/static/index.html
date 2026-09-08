@@ -94,9 +94,9 @@
       <div id="summary" class="summary"><span>No graph generated yet.</span></div>
       <div id="timing" hidden aria-live="polite"></div>
       <section id="distribution" aria-label="Hit-count distribution">
-        <b>Radix cache reuse</b>
+        <b>Node reuse</b>
         <p id="reuseStatus">Choose a trace to view its reuse summary.</p>
-        <img id="reuseImage" hidden alt="Grouped hit-count histograms for radix node counts and stored tokens, with total and shared-cache summaries">
+        <img id="reuseImage" hidden alt="Node counts by hit-count range, with exact bar labels and total and shared-node summaries">
       </section>
       <div id="canvas"><div class="empty">Choose a trace and settings, then build the tree.</div></div>
     </section>
@@ -292,20 +292,11 @@
         kind === 'lmcache_messages' ? '1 message per unit; token size estimated' :
         kind === 'semianalysis_cc' ? '64 tokens (native trace blocks)' :
         'Defined by the selected trace';
-      let count = data?.depth_one_nodes;
-      if (data && count == null) {
-        // Older pre-rendered exports retain full-depth statistics in SVG headers.
-        const header = [...canvas.querySelectorAll('g.depth-header')].find(group =>
-          [...group.querySelectorAll('text')].some(text => text.textContent === 'Depth 1'));
-        const match = header?.textContent.match(/total nodes=([\d,]+)/);
-        if (match) count = Number(match[1].replaceAll(',', ''));
-      }
       byId('traceDetails').innerHTML = '<h2>Hash ID scope</h2>' +
         '<div class="scope-badges" role="list" aria-label="Hash scope; highlighted card applies">' +
         scopes.map(([key, title, subtitle]) => `<div role="listitem" class="scope-badge${key === activeScope ? ' active' : ''}"${key === activeScope ? ' aria-current="true"' : ''}><strong>${key === activeScope ? '✓ ' : ''}${title}</strong><small>${subtitle}</small></div>`).join('') + '</div>' +
         '<p class="scope-note">Within the selected trace. A shared branch still requires matching IDs along the same prefix.' +
         (kind === 'lmcache_messages' ? ' IDs are generated from messages.' : kind === 'ragpulse' ? ' IDs identify content chunks, not prefix KV blocks.' : '') + '</p>' +
-        (count != null ? `<p><b>Depth 1: ${comma(count)} branches in the full tree</b> · Before display limits.</p>` : '') +
         (!activeScope ? '<p>Build this trace to identify its hashing scope.</p>' : '');
     }
     function showReuse() {
