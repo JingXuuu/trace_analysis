@@ -30,7 +30,6 @@ from .cli import (
 from .formats import (
     detect_format,
     source_files,
-    available_formats,
     load_trace,
     supported_suffixes,
     token_size_semantics,
@@ -238,7 +237,6 @@ class AnalysisService:
             ]
             + 1,
             "displayed_nodes": len(nodes) + 1,
-            "depth_one_nodes": len(tree.cache.root_node.children),
             "displayed_nodes_by_depth": displayed_by_depth,
             "svg_url": f"/generated/{svg_file.name}",
             "png_url": f"/generated/{png_file.name}",
@@ -281,7 +279,6 @@ class RequestHandler(BaseHTTPRequestHandler):
             self._send_json(
                 {
                     "traces": self.service.traces(),
-                    "formats": ["auto", *available_formats()],
                 }
             )
             return

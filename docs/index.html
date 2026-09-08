@@ -244,7 +244,7 @@
           label.setAttribute('font-size', '9');
           label.setAttribute('font-weight', 'bold');
           label.setAttribute('fill', index ? '#8c5e3c' : '#4e5d43');
-          // Preserve the delimiter for the full-depth count parser and accessibility.
+          // Keep the two values separated in the accessible text.
           label.textContent = (index ? ' | ' : '') + parts[index];
           group.insertBefore(label, texts[1]);
         }

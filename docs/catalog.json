@@ -108,7 +108,6 @@
         "total_requests": 34987,
         "full_tree_nodes": 35348,
         "displayed_nodes": 53,
-        "depth_one_nodes": 7,
         "displayed_nodes_by_depth": {
           "1": 7,
           "2": 16,
@@ -134,7 +133,6 @@
         "total_requests": 10812,
         "full_tree_nodes": 12099,
         "displayed_nodes": 206,
-        "depth_one_nodes": 852,
         "displayed_nodes_by_depth": {
           "1": 16,
           "2": 16,
@@ -174,7 +172,6 @@
         "total_requests": 43058,
         "full_tree_nodes": 62020,
         "displayed_nodes": 220,
-        "depth_one_nodes": 231,
         "displayed_nodes_by_depth": {
           "1": 16,
           "2": 16,
@@ -230,7 +227,6 @@
         "total_requests": 172800,
         "full_tree_nodes": 178358,
         "displayed_nodes": 134,
-        "depth_one_nodes": 2283,
         "displayed_nodes_by_depth": {
           "1": 16,
           "2": 16,
@@ -261,7 +257,6 @@
         "total_requests": 43011,
         "full_tree_nodes": 66365,
         "displayed_nodes": 457,
-        "depth_one_nodes": 155,
         "displayed_nodes_by_depth": {
           "1": 16,
           "2": 16,
@@ -459,8 +454,5 @@
         "tree_cache_hit": false
       }
     }
-  ],
-  "formats": [
-    "auto"
   ]
 }

@@ -15,7 +15,7 @@ from trace_analysis.cli import (
 )
 from trace_analysis.formats import detect_format, token_size_semantics
 from trace_analysis.web import AnalysisService
-from trace_analysis.reuse import reuse_path, collect_reuse, group_reuse
+from trace_analysis.reuse import reuse_path, group_reuse
 
 try:
     import pyarrow as pa
@@ -58,13 +58,11 @@ def sample_cache() -> FakeCache:
 
 
 class AnalysisTests(unittest.TestCase):
-    def test_reuse_counts_tokens_once_and_preserves_empty_bins(self) -> None:
-        nodes, tokens = collect_reuse(sample_cache(), {k: k * 10 for k in range(1, 7)})
+    def test_node_reuse_counts_and_preserves_empty_bins(self) -> None:
+        nodes = collect_hit_count_distribution(sample_cache())
         self.assertEqual(sum(nodes.values()), 6)
-        self.assertEqual(sum(tokens.values()), 210)
-        self.assertEqual(tokens[1], 60)
-        self.assertEqual(group_reuse({1: 2, 8: 1}, {1: 50, 8: 100}),
-                         (['1', '2–3', '4–7', '8–15'], [2, 0, 0, 1], [50, 0, 0, 100]))
+        self.assertEqual(group_reuse({1: 2, 8: 1}),
+                         (['1', '2–3', '4–7', '8–15'], [2, 0, 0, 1]))
 
     def test_offline_reuse_discovery_and_invalidation(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

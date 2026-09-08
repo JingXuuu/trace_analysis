@@ -1,11 +1,10 @@
-"""Offline full-tree node and token reuse distributions for the web UI."""
+"""Offline full-tree node reuse distributions for the web UI."""
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
 import os
-from collections import Counter
 from pathlib import Path
 from .formats import source_files
 
@@ -20,29 +19,16 @@ def reuse_path(path: Path, output_dir: Path) -> Path:
     return output_dir / f"reuse-v2-{source_key(path)}.svg"
 
 
-def collect_reuse(cache, sizes):
-    """Count nodes and their stored segment tokens once, excluding root."""
-    nodes, tokens = Counter(), Counter()
-    stack = list(cache.root_node.children.values())
-    while stack:
-        node = stack.pop()
-        nodes[node.hit_count] += 1
-        tokens[node.hit_count] += sum(sizes[key] for key in node.key)
-        stack.extend(node.children.values())
-    return nodes, tokens
-
-
-def group_reuse(nodes, tokens):
+def group_reuse(nodes):
     """Power-of-two ranges, including empty intermediate bins."""
-    labels, node_counts, token_counts = [], [], []
+    labels, node_counts = [], []
     lower = 1
     while lower <= max(nodes, default=1):
         upper = lower * 2 - 1
         labels.append(str(lower) if lower == upper else f'{lower}–{upper}')
         node_counts.append(sum(count for hit, count in nodes.items() if lower <= hit <= upper))
-        token_counts.append(sum(count for hit, count in tokens.items() if lower <= hit <= upper))
         lower *= 2
-    return labels, node_counts, token_counts
+    return labels, node_counts
 
 
 def main() -> None:
@@ -55,7 +41,7 @@ def main() -> None:
     os.environ.setdefault('MPLBACKEND', 'Agg')
     from .web import AnalysisService
     from .cli import (add_sglang_to_path, discover_sglang_python_root,
-                      build_sglang_radix_cache)
+                      build_sglang_radix_cache, collect_hit_count_distribution)
     from .formats import load_trace
     import matplotlib.pyplot as plt
     import gc
@@ -71,21 +57,17 @@ def main() -> None:
         if args.replot:
             saved = json.loads(svg.with_suffix('.json').read_text())
             distribution = {int(k): v for k, v in saved['nodes_by_hit_count'].items()}
-            token_distribution = {int(k): v for k, v in saved['tokens_by_hit_count'].items()}
-            trace_format = saved.get('trace_format', 'lmcache_messages' if saved['estimated_tokens'] else 'native')
         else:
             print(f"Loading: {item['name']}", flush=True)
-            (rows, sizes, _), trace_format = load_trace(path, 512)
+            (rows, sizes, _), _ = load_trace(path, 512)
             print(f"Building full tree: {len(rows):,} requests", flush=True)
             cache = build_sglang_radix_cache(rows)
-            distribution, token_distribution = collect_reuse(cache, sizes)
+            distribution = collect_hit_count_distribution(cache)
             del rows, sizes, cache
             gc.collect()
-        labels, counts, token_counts = group_reuse(distribution, token_distribution)
-        total_nodes, total_tokens = sum(counts), sum(token_counts)
+        labels, counts = group_reuse(distribution)
+        total_nodes = sum(counts)
         shared_nodes = total_nodes - distribution.get(1, 0)
-        shared_tokens = total_tokens - token_distribution.get(1, 0)
-        estimated = trace_format == 'lmcache_messages'
         fig, ax = plt.subplots(figsize=(12, 5))
         fig.subplots_adjust(top=.68, bottom=.26, left=.09, right=.98)
         fig.set_facecolor('#fffaf4')
@@ -112,14 +94,11 @@ def main() -> None:
         import csv
         with svg.with_suffix('.csv').open('w', newline='') as stream:
             writer = csv.writer(stream)
-            writer.writerow(['hit_count_range', 'node_count', 'stored_tokens'])
-            writer.writerows(zip(labels, counts, token_counts))
+            writer.writerow(['hit_count_range', 'node_count'])
+            writer.writerows(zip(labels, counts))
         svg.with_suffix('.json').write_text(json.dumps({
-            'total_nodes': total_nodes, 'total_tokens': total_tokens,
-            'shared_nodes': shared_nodes, 'shared_tokens': shared_tokens,
-            'estimated_tokens': estimated, 'root_excluded': True,
-            'trace_format': trace_format,
-            'nodes_by_hit_count': distribution, 'tokens_by_hit_count': token_distribution,
+            'total_nodes': total_nodes, 'shared_nodes': shared_nodes,
+            'root_excluded': True, 'nodes_by_hit_count': distribution,
         }, indent=2) + '\n')
         temporary = svg.with_suffix('.tmp.svg')
         fig.savefig(temporary, format='svg')

@@ -58,7 +58,7 @@ def main():
     html = files('trace_analysis').joinpath('static/index.html').read_text()
     assert 'const STATIC_MODE = false;' in html
     (output / 'index.html').write_text(html.replace('const STATIC_MODE = false;', 'const STATIC_MODE = true;'))
-    (output / 'catalog.json').write_text(json.dumps({'traces': catalog, 'formats': ['auto']}, indent=2) + '\n')
+    (output / 'catalog.json').write_text(json.dumps({'traces': catalog}, indent=2) + '\n')
     (output / '.nojekyll').touch()
     print(f'Static site ready: {output}', flush=True)
 
