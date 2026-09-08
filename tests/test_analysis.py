@@ -288,6 +288,16 @@ class AnalysisTests(unittest.TestCase):
         line = next(line for line in dot.splitlines() if line.lstrip().startswith(f"{shared_leaf.graph_id} "))
         self.assertIn('fillcolor="#2b6cb0"', line)
 
+    def test_depth_max_is_distinct_from_p99(self) -> None:
+        root = FakeNode([], 0)
+        for index in range(100):
+            root.add(FakeNode([index], 500 if index == 99 else 1))
+        stats = collect_depth_statistics(FakeCache(root), total_requests=599)
+        self.assertEqual(stats[1].p99_hit_count, 1)
+        self.assertEqual(stats[1].max_hit_count, 500)
+        dot = dot_text([], total_requests=599, depth_statistics=stats)
+        self.assertIn("max hit=599", dot)
+
     def test_depth_statistics_and_dashed_columns(self) -> None:
         cache = sample_cache()
         stats = collect_depth_statistics(cache, total_requests=18)
@@ -296,6 +306,8 @@ class AnalysisTests(unittest.TestCase):
         self.assertEqual(stats[1].sink_nodes, 0)
         self.assertEqual(stats[2].p50_hit_count, 2)
         self.assertEqual(stats[2].p99_hit_count, 7)
+        self.assertEqual(stats[2].max_hit_count, 7)
+        self.assertEqual(stats[0].max_hit_count, 18)
 
         nodes, _ = select_graph_nodes(
             cache,
@@ -308,6 +320,8 @@ class AnalysisTests(unittest.TestCase):
         self.assertIn("style=dashed", dot)
         self.assertIn("parent nodes=0", dot)
         self.assertIn("sink nodes=4", dot)
+        self.assertIn("max hit=7", dot)
+        self.assertIn("max hit=18", dot)
 
 
 if __name__ == "__main__":

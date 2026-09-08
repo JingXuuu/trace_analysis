@@ -230,23 +230,32 @@
         texts[2].setAttribute('font-weight', 'bold');
         texts[3].setAttribute('fill', '#786b60');
         const parts = texts[1].textContent.split('|').map(value => value.trim());
-        if (parts.length !== 2) continue;
+        if (parts.length < 2 || parts.length > 3) continue;
         const baseline = Number(texts[1].getAttribute('y'));
-        const half = box.width / 2;
-        for (let index = 0; index < 2; index++) {
-          const xx = box.x + index * half;
-          group.insertBefore(rect(xx-2, baseline-10, half-4, 13,
-            index ? '#efe1d4' : '#e3eadc'), texts[1]);
+        const gap = 5;
+        const badgeWidth = (box.width - gap * (parts.length - 1)) / parts.length;
+        for (let index = 0; index < parts.length; index++) {
+          const xx = box.x + index * (badgeWidth + gap);
+          group.insertBefore(rect(xx, baseline-10, badgeWidth, 13,
+            ['#e3eadc', '#efe1d4', '#e7d4be'][index]), texts[1]);
           const label = document.createElementNS(ns, 'text');
-          label.setAttribute('x', xx+2);
+          label.setAttribute('x', xx + badgeWidth / 2);
+          label.setAttribute('text-anchor', 'middle');
           label.setAttribute('y', baseline);
           label.setAttribute('font-family', 'DejaVu Sans');
           label.setAttribute('font-size', '9');
           label.setAttribute('font-weight', 'bold');
           label.setAttribute('fill', index ? '#8c5e3c' : '#4e5d43');
-          // Keep the two values separated in the accessible text.
-          label.textContent = (index ? ' | ' : '') + parts[index];
+          label.setAttribute('aria-label', parts[index]);
+          label.textContent = parts[index].replace(/^(p50|p99|max) hit=/i,
+            (_, name) => `${name.toUpperCase()} `);
           group.insertBefore(label, texts[1]);
+          // Measure the actual bold font, keeping padding even for large counts.
+          const availableWidth = badgeWidth - 10;
+          if (label.getComputedTextLength() > availableWidth) {
+            label.setAttribute('textLength', availableWidth);
+            label.setAttribute('lengthAdjust', 'spacingAndGlyphs');
+          }
         }
         texts[1].remove();
       }

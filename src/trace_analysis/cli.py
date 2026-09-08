@@ -46,6 +46,7 @@ class DepthStats:
     depth: int
     p50_hit_count: int
     p99_hit_count: int
+    max_hit_count: int
     total_nodes: int
     parent_nodes: int
     sink_nodes: int
@@ -146,6 +147,7 @@ def collect_depth_statistics(cache: Any, total_requests: int) -> dict[int, Depth
             depth=depth,
             p50_hit_count=_nearest_rank(hit_counts, 0.50),
             p99_hit_count=_nearest_rank(hit_counts, 0.99),
+            max_hit_count=max(hit_counts),
             total_nodes=len(depth_nodes),
             parent_nodes=parent_nodes,
             sink_nodes=len(depth_nodes) - parent_nodes,
@@ -353,7 +355,7 @@ def dot_text(
 
     if depth_statistics is None:
         depth_statistics = {
-            0: DepthStats(0, total_requests, total_requests, 1, 1, 0)
+            0: DepthStats(0, total_requests, total_requests, total_requests, 1, 1, 0)
         }
         for depth, depth_nodes in displayed_by_depth.items():
             hits = [node.hit_count for node in depth_nodes]
@@ -362,6 +364,7 @@ def dot_text(
                 depth=depth,
                 p50_hit_count=_nearest_rank(hits, 0.50),
                 p99_hit_count=_nearest_rank(hits, 0.99),
+                max_hit_count=max(hits),
                 total_nodes=len(depth_nodes),
                 parent_nodes=parents,
                 sink_nodes=len(depth_nodes) - parents,
@@ -372,7 +375,7 @@ def dot_text(
             '<<TABLE BORDER="0" CELLBORDER="0" CELLPADDING="1">'
             f'<TR><TD ALIGN="LEFT"><B>Depth {stats.depth}</B></TD></TR>'
             f'<TR><TD ALIGN="LEFT">p50 hit={stats.p50_hit_count:,}  |  '
-            f'p99 hit={stats.p99_hit_count:,}</TD></TR>'
+            f'p99 hit={stats.p99_hit_count:,}  |  max hit={stats.max_hit_count:,}</TD></TR>'
             f'<TR><TD ALIGN="LEFT">total nodes={stats.total_nodes:,}  |  '
             f'shown={displayed:,}</TD></TR>'
             f'<TR><TD ALIGN="LEFT">parent nodes={stats.parent_nodes:,}  |  '
