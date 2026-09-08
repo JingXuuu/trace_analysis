@@ -140,22 +140,26 @@ opened remotely when the host firewall permits it.
 
 ## Outputs
 
-Prepare full-tree reuse histograms offline for every available trace:
+Prepare full-tree reuse histograms and depth profiles offline for every available trace:
 
 ```bash
 ./scripts/prepare_reuse.sh
 ```
 
-The selected trace's node-reuse chart appears above the tree after refreshing the
+The selected trace's node-reuse chart and depth-versus-node-count line chart appear
+side by side above the tree, separated by a vertical divider, after refreshing the
 page, without rebuilding the tree. Hit counts are grouped into 1, 2–3, 4–7,
 8–15, and successive doubling ranges. Bars show exact node counts. Summary
 cards show total nodes, shared nodes, and the shared-node percentage.
+The depth profile counts all nodes at each compressed radix depth, independent
+of display limits, with maximum depth, widest depth, and peak-node summaries.
 Shared means hit count > 1; the root is excluded. LMCache token sizes are
 explicitly estimated. All LMCache
 shards count as one trace. SVG, PNG, and CSV files are saved in `artifacts/web`.
 Use `--output-dir` to match a custom web output directory. Existing plots are
 reused; use `--force` to regenerate. Changed source files get a new cache key.
 Use `--replot` to redraw charts from saved counts without rebuilding the trees.
+Older saved counts without depth data are rebuilt once automatically.
 Local `artifacts/` outputs are ignored by Git; only the current static site in
 `docs/` is published.
 Full CC and LMCache preparation can take several minutes and substantial RAM.

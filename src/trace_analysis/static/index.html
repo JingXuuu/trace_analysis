@@ -50,7 +50,7 @@
     #timing b { color:var(--ink); font-variant-numeric:tabular-nums; }
     #canvas { flex:1; min-height:650px; padding:16px; overflow:auto; background:linear-gradient(145deg,#fffdf9,#f7f0e7); }
     #distribution { padding:14px 18px; border-bottom:1px solid var(--line); }
-    #distribution img { display:block; width:100%; max-width:1200px; height:auto; }
+    #distribution img { display:block; width:100%; max-width:1800px; height:auto; }
     #distribution p { font-size:14px; color:var(--muted); }
     #canvas svg { display:block; max-width:none; height:auto; }
     #canvas svg .node { cursor:pointer; }
@@ -93,10 +93,10 @@
       <section id="traceDetails" aria-label="Trace hashing and prefix sharing" aria-live="polite"></section>
       <div id="summary" class="summary"><span>No graph generated yet.</span></div>
       <div id="timing" hidden aria-live="polite"></div>
-      <section id="distribution" aria-label="Hit-count distribution">
-        <b>Node reuse</b>
+      <section id="distribution" aria-label="Node reuse and depth distributions">
+        <b>Node reuse &amp; depth profile</b>
         <p id="reuseStatus">Choose a trace to view its reuse summary.</p>
-        <img id="reuseImage" hidden alt="Node counts by hit-count range, with exact bar labels and total and shared-node summaries">
+        <img id="reuseImage" hidden alt="Side-by-side charts separated by a line: node counts by hit-count range, and node counts by compressed radix depth. Both use the complete tree, excluding root.">
       </section>
       <div id="canvas"><div class="empty">Choose a trace and settings, then build the tree.</div></div>
     </section>

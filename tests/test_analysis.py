@@ -308,6 +308,10 @@ class AnalysisTests(unittest.TestCase):
         self.assertEqual(stats[2].p99_hit_count, 7)
         self.assertEqual(stats[2].max_hit_count, 7)
         self.assertEqual(stats[0].max_hit_count, 18)
+        self.assertEqual({depth: stat.total_nodes for depth, stat in stats.items()
+                          if depth > 0}, {1: 2, 2: 4})
+        self.assertEqual(sum(stat.total_nodes for depth, stat in stats.items() if depth > 0),
+                         sum(collect_hit_count_distribution(cache).values()))
 
         nodes, _ = select_graph_nodes(
             cache,
