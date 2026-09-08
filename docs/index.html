@@ -32,12 +32,19 @@
     aside select, aside input, aside button { font-family:inherit; font-size:16px; }
     aside .download { font-size:14px; padding:10px 8px; }
     aside #status { font-size:15px; line-height:1.5; }
+    #blockSize, #format { display:block; padding:9px 10px; border:1px solid var(--line); border-radius:6px; background:var(--cream); font-size:15px; color:var(--muted); }
     .viewer { min-width:0; display:flex; flex-direction:column; overflow:hidden; }
     .summary { display:flex; flex-wrap:wrap; gap:18px; padding:14px 18px; border-bottom:1px solid var(--line); font-size:13px; color:var(--muted); }
     .summary b { color:var(--ink); }
     #traceDetails { padding:16px 18px; border-bottom:1px solid var(--line); background:var(--cream); }
     #traceDetails h2 { margin:0 0 8px; font-size:17px; color:var(--cocoa); }
     #traceDetails p { margin:6px 0; font-size:14px; line-height:1.55; }
+    .scope-badges { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
+    .scope-badge { flex:1 1 155px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#fffaf4; color:var(--muted); }
+    .scope-badge strong { display:block; font-size:14px; }
+    .scope-badge small { display:block; margin-top:3px; font-size:12px; }
+    .scope-badge.active { background:#e3eadc; border:2px solid var(--sage); padding:9px 11px; color:#465538; }
+    #traceDetails .scope-note { font-size:12px; color:var(--muted); }
     #timing { padding:12px 18px; border-bottom:1px solid var(--line); font-size:14px; color:var(--muted); }
     #timing .timing-stages { display:flex; flex-wrap:wrap; gap:8px 20px; margin-top:8px; font-size:13px; }
     #timing b { color:var(--ink); font-variant-numeric:tabular-nums; }
@@ -68,13 +75,13 @@
       <label for="trace">Trace</label>
       <select id="trace"></select>
       <label for="format">Trace format</label>
-      <select id="format"></select>
+      <output id="format">Automatically detected</output>
       <div class="row">
         <div><label for="maxNodes">Whole tree max</label><input id="maxNodes" type="number" min="1" max="20000" value="1000"></div>
         <div><label for="maxDepthNodes">Per depth max</label><input id="maxDepthNodes" type="number" min="1" max="5000" value="16"></div>
       </div>
-      <label for="blockSize">Block size (native hash traces)</label>
-      <input id="blockSize" type="number" min="1" value="512">
+      <label for="blockSize">Trace block / unit size</label>
+      <output id="blockSize">Defined by the selected trace</output>
       <button id="plot">Build and plot</button>
       <div class="actions">
         <a id="svg" class="download" aria-disabled="true">Download SVG</a>
@@ -97,7 +104,7 @@
   <script>
     const STATIC_MODE = true;
     const byId = id => document.getElementById(id);
-    const trace = byId('trace'), format = byId('format'), plot = byId('plot');
+    const trace = byId('trace'), plot = byId('plot');
     const status = byId('status'), canvas = byId('canvas'), summary = byId('summary');
     const svg = byId('svg'), png = byId('png');
     const comma = value => Number(value).toLocaleString();
@@ -264,15 +271,27 @@
     function showTraceDetails(data = null) {
       const selected = traceCatalog.find(item => item.id === trace.value);
       const name = selected?.name || '';
-      const kind = data?.trace_format || selected?.plot?.trace_format ||
+      const kind = data?.trace_format || selected?.plot?.trace_format || selected?.trace_format ||
         (name.includes('lmcache-agentic-traces') ? 'lmcache_messages' :
          name.includes('cc-traces-weka') ? 'semianalysis_cc' :
          name.includes('mooncake') ? 'mooncake' : '');
-      const explanations = {
-        mooncake: 'Uses shared block IDs across requests. Depth-1 branches represent distinct initial blocks, not necessarily different system prompts.',
-        lmcache_messages: 'Uses generated message-level IDs. Identical first system messages for the same model share a branch across sessions and shards.',
-        semianalysis_cc: 'IDs are scoped to each session and model. Identical system prompts across sessions remain separate, so more branches do not necessarily mean more diverse prompts.'
-      };
+      const activeScope = {mooncake:'trace', bailian:'trace', ragpulse:'trace',
+        lmcache_messages:'model', semianalysis_cc:'session_model'}[kind];
+      const scopes = [
+        ['trace', 'Trace-wide', 'Across requests and sessions'],
+        ['model', 'Model-wide', 'Across sessions · same model'],
+        ['session_model', 'Session + model', 'Same session and model only'],
+        ['request', 'Request-local', 'No cross-request sharing']
+      ];
+      const formatNames = {mooncake:'Mooncake', semianalysis_cc:'SemiAnalysis CC',
+        lmcache_messages:'LMCache messages', bailian:'Qwen / Bailian', ragpulse:'RAGPulse'};
+      byId('format').textContent = kind ? (formatNames[kind] || kind) : 'Automatically detected';
+      byId('blockSize').textContent = kind === 'mooncake' ? '512 tokens (fixed)' :
+        kind === 'bailian' ? '16 tokens (fixed)' :
+        kind === 'ragpulse' ? 'Variable-length chunks; exact size per ID' :
+        kind === 'lmcache_messages' ? '1 message per unit; token size estimated' :
+        kind === 'semianalysis_cc' ? '64 tokens (native trace blocks)' :
+        'Defined by the selected trace';
       let count = data?.depth_one_nodes;
       if (data && count == null) {
         // Older pre-rendered exports retain full-depth statistics in SVG headers.
@@ -281,9 +300,13 @@
         const match = header?.textContent.match(/total nodes=([\d,]+)/);
         if (match) count = Number(match[1].replaceAll(',', ''));
       }
-      byId('traceDetails').innerHTML = '<h2>Hashing &amp; prefix sharing</h2>' +
+      byId('traceDetails').innerHTML = '<h2>Hash ID scope</h2>' +
+        '<div class="scope-badges" role="list" aria-label="Hash scope; highlighted card applies">' +
+        scopes.map(([key, title, subtitle]) => `<div role="listitem" class="scope-badge${key === activeScope ? ' active' : ''}"${key === activeScope ? ' aria-current="true"' : ''}><strong>${key === activeScope ? '✓ ' : ''}${title}</strong><small>${subtitle}</small></div>`).join('') + '</div>' +
+        '<p class="scope-note">Within the selected trace. A shared branch still requires matching IDs along the same prefix.' +
+        (kind === 'lmcache_messages' ? ' IDs are generated from messages.' : kind === 'ragpulse' ? ' IDs identify content chunks, not prefix KV blocks.' : '') + '</p>' +
         (count != null ? `<p><b>Depth 1: ${comma(count)} branches in the full tree</b> · Before display limits.</p>` : '') +
-        `<p>${escapeHtml(explanations[kind] || 'Build this trace to identify its hashing scope.')}</p>`;
+        (!activeScope ? '<p>Build this trace to identify its hashing scope.</p>' : '');
     }
     function showReuse() {
       showTraceDetails();
@@ -309,12 +332,11 @@
         traceCatalog = data.traces;
         trace.innerHTML = data.traces.map(item =>
           `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)} (${comma(item.bytes)} bytes)</option>`).join('');
-        format.innerHTML = data.formats.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
         status.textContent = data.traces.length ? `${data.traces.length} trace(s) available.` : 'No supported traces found in the configured directories.';
         plot.disabled = !data.traces.length;
         showReuse();
         if (STATIC_MODE && data.traces.length) {
-          for (const id of ['format', 'maxNodes', 'maxDepthNodes', 'blockSize']) byId(id).disabled = true;
+          for (const id of ['maxNodes', 'maxDepthNodes']) byId(id).disabled = true;
           plot.textContent = 'View pre-rendered tree';
           trace.value = data.traces.find(item => item.name === 'mooncake_trace.jsonl')?.id || data.traces[0].id;
           showReuse();
@@ -335,10 +357,9 @@
       plot.disabled = true; status.className = ''; status.textContent = 'Building and validating the radix tree…';
       svg.setAttribute('aria-disabled', 'true'); png.setAttribute('aria-disabled', 'true');
       const payload = {
-        trace: trace.value, trace_format: format.value,
+        trace: trace.value,
         max_nodes: byId('maxNodes').value,
         max_nodes_per_depth: byId('maxDepthNodes').value,
-        block_size: byId('blockSize').value
       };
       try {
         let data;

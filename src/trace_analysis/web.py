@@ -28,6 +28,8 @@ from .cli import (
     validate_sglang_tree,
 )
 from .formats import (
+    detect_format,
+    source_files,
     available_formats,
     load_trace,
     supported_suffixes,
@@ -84,8 +86,14 @@ class AnalysisService:
                     or resolved in seen
                 ):
                     continue
-                members = sorted(path.rglob("*.parquet")) if grouped else [path]
-                if not members:
+                detected = 'lmcache_messages' if path.suffix == '.parquet' or grouped else None
+                if path.suffix == '.jsonl':
+                    try:
+                        detected = detect_format(path)
+                    except (ValueError, OSError):
+                        continue
+                members = source_files(path)
+                if not members or not all(member.is_file() for member in members):
                     continue
                 seen.add(resolved)
                 relative = path.relative_to(directory).as_posix()
@@ -95,6 +103,7 @@ class AnalysisService:
                     {
                         "id": trace_id,
                         "name": relative,
+                        "trace_format": detected,
                         "directory": str(directory),
                         "bytes": sum(member.stat().st_size for member in members),
                         "reuse_url": f"/generated/{reuse.name}" if reuse.is_file() else None,
@@ -143,13 +152,14 @@ class AnalysisService:
         max_per_depth = self._integer_setting(
             payload, "max_nodes_per_depth", 16, 5_000
         )
-        block_size = self._integer_setting(payload, "block_size", 512, 1_000_000)
+        # Mooncake IDs encode fixed 512-token blocks. Other adapters read native
+        # sizes or use message units; a web setting cannot re-block source hashes.
+        block_size = 512
         priority = "depth"
-        trace_format = str(payload.get("trace_format", "auto"))
-        if trace_format not in {"auto", *available_formats()}:
-            raise ValueError("unknown trace format")
+        # The selected source determines its adapter, never a client override.
+        trace_format = "auto"
 
-        members = sorted(trace_file.rglob("*.parquet")) if trace_file.is_dir() else [trace_file]
+        members = source_files(trace_file)
         cache_key = (
             trace_file,
             tuple((member, member.stat().st_mtime_ns, member.stat().st_size)

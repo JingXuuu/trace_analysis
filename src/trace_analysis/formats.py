@@ -56,6 +56,8 @@ def token_size_semantics(trace_format: str) -> str:
     """Describe whether normalized node sizes are native or estimated."""
     if trace_format == "lmcache_messages":
         return "estimated_tokens_from_canonical_message_utf8_bytes_divided_by_4"
+    if trace_format == 'ragpulse':
+        return 'native_component_token_lengths_not_full_prompt_tokenization'
     return "native_trace_tokens"
 
 
@@ -139,6 +141,7 @@ def sniff_mooncake(trace_file: Path) -> bool:
                         isinstance(record, dict)
                         and isinstance(record.get("input_length"), int)
                         and isinstance(record.get("hash_ids"), list)
+                        and 'chat_id' not in record
                     )
     except (OSError, json.JSONDecodeError):
         return False
@@ -345,6 +348,16 @@ def load_trace(
     return adapter.loader(trace_file, block_size), selected_format
 
 
+def source_files(path: Path) -> list[Path]:
+    """All files whose content affects a normalized tree."""
+    if path.is_dir():
+        return sorted(path.rglob('*.parquet'))
+    if path.name == '0_trace.jsonl':
+        from .content_traces import RAG_FILES
+        return [path, *(path.parent / name for name in RAG_FILES)]
+    return [path]
+
+
 register_adapter(
     TraceAdapter(
         name="mooncake",
@@ -371,3 +384,8 @@ register_adapter(
         sniffer=sniff_semianalysis_cc,
     )
 )
+
+from .content_traces import load_bailian, load_ragpulse, sniff_bailian, sniff_ragpulse
+
+register_adapter(TraceAdapter('bailian', ('.jsonl',), load_bailian, sniff_bailian))
+register_adapter(TraceAdapter('ragpulse', ('.jsonl',), load_ragpulse, sniff_ragpulse))

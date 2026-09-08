@@ -1,0 +1,25 @@
+{
+  "trace": "qwen_traceB_blksz_16.jsonl",
+  "trace_format": "bailian",
+  "priority": "depth",
+  "maximum_radix_unit_size_tokens": 16,
+  "token_size_semantics": "native_trace_tokens",
+  "total_requests": 172800,
+  "full_tree_nodes": 178358,
+  "displayed_nodes": 134,
+  "depth_one_nodes": 2283,
+  "displayed_nodes_by_depth": {
+    "1": 16,
+    "2": 16,
+    "3": 16,
+    "4": 16,
+    "5": 16,
+    "6": 16,
+    "7": 16,
+    "8": 16,
+    "9": 5
+  },
+  "svg_url": "./assets/tree-3db4200301a46e17f2f1ee72.svg",
+  "png_url": "./assets/tree-3db4200301a46e17f2f1ee72.png",
+  "tree_cache_hit": false
+}

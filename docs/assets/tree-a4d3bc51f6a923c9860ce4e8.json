@@ -1,0 +1,20 @@
+{
+  "trace": "0_trace.jsonl",
+  "trace_format": "ragpulse",
+  "priority": "depth",
+  "maximum_radix_unit_size_tokens": 512,
+  "token_size_semantics": "native_component_token_lengths_not_full_prompt_tokenization",
+  "total_requests": 34987,
+  "full_tree_nodes": 35348,
+  "displayed_nodes": 53,
+  "depth_one_nodes": 7,
+  "displayed_nodes_by_depth": {
+    "1": 7,
+    "2": 16,
+    "3": 16,
+    "4": 13
+  },
+  "svg_url": "./assets/tree-a4d3bc51f6a923c9860ce4e8.svg",
+  "png_url": "./assets/tree-a4d3bc51f6a923c9860ce4e8.png",
+  "tree_cache_hit": false
+}

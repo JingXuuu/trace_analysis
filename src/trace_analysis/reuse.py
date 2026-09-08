@@ -7,10 +7,11 @@ import json
 import os
 from collections import Counter
 from pathlib import Path
+from .formats import source_files
 
 
 def source_key(path: Path) -> str:
-    members = sorted(path.rglob("*.parquet")) if path.is_dir() else [path]
+    members = source_files(path)
     signature = [(str(p.resolve()), p.stat().st_size, p.stat().st_mtime_ns) for p in members]
     return hashlib.sha256(json.dumps(signature).encode()).hexdigest()[:24]
 
@@ -71,7 +72,7 @@ def main() -> None:
             saved = json.loads(svg.with_suffix('.json').read_text())
             distribution = {int(k): v for k, v in saved['nodes_by_hit_count'].items()}
             token_distribution = {int(k): v for k, v in saved['tokens_by_hit_count'].items()}
-            trace_format = 'lmcache_messages' if saved['estimated_tokens'] else 'native'
+            trace_format = saved.get('trace_format', 'lmcache_messages' if saved['estimated_tokens'] else 'native')
         else:
             print(f"Loading: {item['name']}", flush=True)
             (rows, sizes, _), trace_format = load_trace(path, 512)
@@ -85,7 +86,7 @@ def main() -> None:
         shared_nodes = total_nodes - distribution.get(1, 0)
         shared_tokens = total_tokens - token_distribution.get(1, 0)
         estimated = trace_format == 'lmcache_messages'
-        token_label = 'Estimated tokens' if estimated else 'Tokens'
+        token_label = 'Estimated tokens' if estimated else ('Component tokens' if trace_format == 'ragpulse' else 'Tokens')
         fig, axes = plt.subplots(1, 2, figsize=(14, 5))
         fig.subplots_adjust(top=.68, bottom=.26, left=.08, right=.98, wspace=.25)
         fig.set_facecolor('#fffaf4')
@@ -121,6 +122,7 @@ def main() -> None:
             'total_nodes': total_nodes, 'total_tokens': total_tokens,
             'shared_nodes': shared_nodes, 'shared_tokens': shared_tokens,
             'estimated_tokens': estimated, 'root_excluded': True,
+            'trace_format': trace_format,
             'nodes_by_hit_count': distribution, 'tokens_by_hit_count': token_distribution,
         }, indent=2) + '\n')
         temporary = svg.with_suffix('.tmp.svg')

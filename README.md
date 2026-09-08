@@ -15,21 +15,49 @@ is tracked separately.
 - `traces/mooncake_trace.jsonl`: all 23,608 requests.
 - `traces/mooncake_trace_1000.jsonl`: a 1,000-request sample.
 - `traces/mooncake_trace_short.jsonl`: a ten-request smoke-test trace.
-- [`traces/external/cc-traces-weka-no-subagents-051226/traces.jsonl`](https://huggingface.co/datasets/semianalysisai/cc-traces-weka-no-subagents-051226): 949
+- [`traces/cc-traces-weka-no-subagents-051226/traces.jsonl`](https://huggingface.co/datasets/semianalysisai/cc-traces-weka-no-subagents-051226): 949
   SemiAnalysis traces containing 136,118 requests and native 64-token block
   hashes.
-- [`traces/external/lmcache-agentic-traces/data/`](https://huggingface.co/datasets/zeelHz/lmcache-agentic-traces): five message-level Parquet
+- [`traces/lmcache-agentic-traces/data/`](https://huggingface.co/datasets/zeelHz/lmcache-agentic-traces): five message-level Parquet
   shards containing 24,880 requests.
 - `docs/`: current pre-rendered trees and reuse charts for the static website.
+- `traces/bailian/`: Qwen/Bailian chat, API, reasoning, and coding workloads
+  with fixed 16-token block IDs.
+- `traces/ragpulse/`: RAGPulse requests and five variable-length content-ID
+  lookup files from the pinned official GitHub release.
 
 The external data can be restored or updated reproducibly with
 `make download-traces` after installing the download dependencies described in
 [DEPLOYMENT.md](DEPLOYMENT.md).
 Repository revisions and expected SHA-256 hashes are recorded in
-`traces/external/SOURCES.json`. The multi-gigabyte data files remain ignored by
+`traces/SOURCES.json`. The multi-gigabyte data files remain ignored by
 Git.
 
+Download just the new datasets with `python scripts/download_hf_traces.py bailian ragpulse`.
+Their pinned GitHub revisions are in the downloader; `DOWNLOAD.json` records
+downloaded file sizes and SHA-256 checksums. Raw JSONL files stay ignored by Git.
+Bailian files are separate traces, with IDs compared only within a file.
+RAGPulse preserves the upstream replay's component order and uses supplied chunk
+token lengths. Repeated content after a different prefix becomes a different
+radix edge; this is prefix reuse, not arbitrary document-cache reuse. The tree
+does not infer token-level overlap inside different content chunks.
+RAGPulse component lengths differ slightly from reported full input lengths;
+node sizes represent the supplied component totals, without inventing missing tokens.
+
 ## Run it
+
+Block sizes for the included traces are fixed by their source data:
+
+| Trace | Block / radix-unit size |
+| --- | --- |
+| Mooncake (all three files) | 512 tokens per block |
+| CC | 64 tokens per block |
+| Bailian (all four workloads) | 16 tokens per block |
+| RAGPulse | Variable-length chunks; exact lengths supplied per ID |
+| LMCache | One message per unit; token lengths estimated |
+
+Final blocks may be shorter. A compressed radix node can contain multiple units,
+so its displayed token size is not the source block size.
 
 Set up Python, SGLang, and Graphviz as described in
 [DEPLOYMENT.md](DEPLOYMENT.md), then analyze the included Mooncake trace:
@@ -95,7 +123,7 @@ Use `./scripts/run_web.sh --help` for options including `--host`, `--trace-dir`,
 and `--output-dir`.
 
 The page lets you select any supported trace
-under `traces/`, edit the whole-tree and per-depth limits, change the block size,
+under `traces/`, edit the whole-tree and per-depth limits, view the trace's fixed unit size,
 and plot with depth-first priority. It renders in the page
 and provides direct SVG and PNG downloads. Hovering a displayed node highlights
 that node, all of its ancestors, all of its descendants, and the connecting

@@ -9,8 +9,11 @@ __pycache__/
 .venv/
 build/
 dist/
-/traces/external/**/.cache/
-/traces/external/**/*.parquet
-/traces/external/**/traces.jsonl
+/traces/**/.cache/
+/traces/**/*.parquet
+/traces/**/traces.jsonl
 # Local CLI exports and web caches; publish only the curated docs/ site.
 /artifacts/
+/traces/bailian/*.jsonl
+/traces/ragpulse/*.jsonl
+*.part

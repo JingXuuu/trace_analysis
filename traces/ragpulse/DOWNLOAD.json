@@ -1,0 +1,46 @@
+{
+  "repo_id": "flashserve/RAGPulse",
+  "revision": "7da286becf0f049b2bcb1e5a11d9ba8eb638eff4",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 9615,
+      "sha256": "a6f16b3a3c920a468cae366378d972f167ac2f5b4dac90adf10a2d653f9f241a"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 1071,
+      "sha256": "76d9798f1a0c8b8f16c73069717732ba1735c5eecd3c9b49beb6e192fb156e87"
+    },
+    {
+      "path": "0_trace.jsonl",
+      "bytes": 9961760,
+      "sha256": "017b54972ba3c6c4d52c6cc6967f4168630c381ac58a3b5625a45e795ffa13fa"
+    },
+    {
+      "path": "1_sys_prompt.jsonl",
+      "bytes": 1399484,
+      "sha256": "a7e9b8704b8991359ca7183a3378c6822798ab005ea7a6dbd3b3655d6765ca72"
+    },
+    {
+      "path": "2_passages.jsonl",
+      "bytes": 352301,
+      "sha256": "9c9a3cb237f6689755b89a80cfc3a724f9b49e303d339efe8ed9fce6ca07617e"
+    },
+    {
+      "path": "3_history.jsonl",
+      "bytes": 1431176,
+      "sha256": "e227c583bdf7ddaf98c8be18c0e57507487d7c9d02e5b4b9bb1948cccc733b30"
+    },
+    {
+      "path": "4_user_input.jsonl",
+      "bytes": 1333068,
+      "sha256": "b2e62e40262774b61be5341ca11fed7a32562fdcb5b614827406f64c2cb5f914"
+    },
+    {
+      "path": "5_web_search.jsonl",
+      "bytes": 291820,
+      "sha256": "cf9c7c548077a16262cac0b13ef4260b4934cc544caef633b09e1475dbde42c6"
+    }
+  ]
+}

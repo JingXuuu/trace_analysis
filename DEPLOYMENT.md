@@ -39,7 +39,7 @@ python scripts/download_hf_traces.py
 ```
 
 The downloader pins the exact Hugging Face revisions recorded in
-`traces/external/SOURCES.json` and resumes existing downloads.
+`traces/SOURCES.json` and resumes existing downloads.
 
 ## Publish to a Git host
 

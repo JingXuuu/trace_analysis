@@ -1,6 +1,18 @@
 {
   "datasets": [
     {
+      "repo_id": "alibaba-edu/qwen-bailian-usagetraces-anon",
+      "source": "github",
+      "revision": "5f7439c51ec248a0c585f7d90a41a6f57773b912",
+      "file_manifest": "bailian/DOWNLOAD.json"
+    },
+    {
+      "repo_id": "flashserve/RAGPulse",
+      "source": "github",
+      "revision": "7da286becf0f049b2bcb1e5a11d9ba8eb638eff4",
+      "file_manifest": "ragpulse/DOWNLOAD.json"
+    },
+    {
       "repo_id": "zeelHz/lmcache-agentic-traces",
       "revision": "565e5655d2e4b6cba0865a0e1d60b09ed2dfcdf0",
       "rows": 24880,

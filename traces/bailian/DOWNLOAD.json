@@ -1,0 +1,36 @@
+{
+  "repo_id": "alibaba-edu/qwen-bailian-usagetraces-anon",
+  "revision": "5f7439c51ec248a0c585f7d90a41a6f57773b912",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 6628,
+      "sha256": "9815b81e4157885ab446ecca397df92a89d3797af4721d19306ad414307f0f04"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 11357,
+      "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
+    },
+    {
+      "path": "qwen_traceA_blksz_16.jsonl",
+      "bytes": 56354493,
+      "sha256": "07cedc9ed8aff301994ac68ed4aede8123b7603673575eeba9dd677de663db17"
+    },
+    {
+      "path": "qwen_traceB_blksz_16.jsonl",
+      "bytes": 96209982,
+      "sha256": "68e3f98e2d601d60d0abf4b89bc8a3654372abab7b1cde6373a13d0054379d59"
+    },
+    {
+      "path": "qwen_thinking_blksz_16.jsonl",
+      "bytes": 27901454,
+      "sha256": "41ac36d9d1b54d084eeb6b05e9d142ba9d02f8bf79cfc9fff418d8ab7cdee906"
+    },
+    {
+      "path": "qwen_coder_blksz_16.jsonl",
+      "bytes": 132054902,
+      "sha256": "3d74974cebb7bccb69b1ca6ea210a44d9a3033443c0271ed015327284dea1aff"
+    }
+  ]
+}
