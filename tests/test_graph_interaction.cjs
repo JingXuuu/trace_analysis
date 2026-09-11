@@ -4,6 +4,43 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 
+test('depth hover selects nearest point and hides outside the plot', () => {
+  const html = fs.readFileSync(path.join(__dirname, '../src/trace_analysis/static/index.html'), 'utf8');
+  const source = html.slice(html.indexOf('    function makeDepthProfileInteractive('),
+    html.indexOf('    let reuseLoad'));
+  const events = {}, appended = [];
+  const metadata = {textContent: JSON.stringify({counts: {1: 50, 2: 120, 3: 20},
+    bounds: [.5, .2, .4, .6], xlim: [1, 3], ylim: [0, 150]})};
+  const svg = {
+    querySelector: () => metadata, viewBox: {baseVal: {x: 0, y: 0, width: 1000, height: 500}},
+    appendChild: node => appended.push(node), addEventListener: (name, fn) => { events[name] = fn; },
+    getScreenCTM: () => ({inverse() { return this; }}),
+  };
+  const container = {querySelector: () => svg, appendChild: node => appended.push(node),
+    getBoundingClientRect: () => ({left: 0, top: 0, width: 1000})};
+  const element = () => ({attrs: {}, style: {}, offsetWidth: 170, offsetHeight: 30,
+    setAttribute(name, value) { this.attrs[name] = value; }});
+  vm.runInNewContext(source + '\nmakeDepthProfileInteractive(container);', {
+    container, comma: n => String(n),
+    document: {createElementNS: element, createElement: element},
+    DOMPoint: class { constructor(x, y) { this.x = x; this.y = y; } matrixTransform() { return this; } },
+  });
+  const [marker, tooltip] = appended;
+  events.pointermove({clientX: 710, clientY: 200});
+  assert.equal(tooltip.textContent, 'Depth 2 · 120 nodes');
+  assert.equal(marker.attrs.cx, 700);
+  assert.equal(marker.attrs.cy, 160);
+  assert.equal(marker.attrs.visibility, 'visible');
+  events.pointermove({clientX: 890, clientY: 200});
+  assert.equal(tooltip.textContent, 'Depth 3 · 20 nodes');
+  events.pointermove({clientX: 100, clientY: 200});
+  assert.equal(tooltip.hidden, true);
+  events.pointermove({clientX: 510, clientY: 200});
+  assert.equal(tooltip.textContent, 'Depth 1 · 50 nodes');
+  events.pointerleave();
+  assert.equal(marker.attrs.visibility, 'hidden');
+});
+
 test('route lock ignores hover and unlocks from related nodes or edges', () => {
   const html = fs.readFileSync(path.join(__dirname, '../src/trace_analysis/static/index.html'), 'utf8');
   const source = html.slice(html.indexOf('    function makeGraphInteractive('),

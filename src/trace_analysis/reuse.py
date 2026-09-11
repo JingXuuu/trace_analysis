@@ -133,6 +133,17 @@ def main() -> None:
         }, indent=2) + '\n')
         temporary = svg.with_suffix('.tmp.svg')
         fig.savefig(temporary, format='svg')
+        # Embed exact counts and plot geometry for offline browser interaction.
+        import xml.etree.ElementTree as ET
+        document = ET.parse(temporary)
+        metadata = ET.SubElement(document.getroot(), '{http://www.w3.org/2000/svg}metadata',
+                                 {'id': 'depth-profile-data'})
+        bounds = depth_ax.get_position()
+        metadata.text = json.dumps({'counts': depth_counts,
+                                    'bounds': [bounds.x0, 1 - bounds.y1, bounds.width, bounds.height],
+                                    'xlim': list(depth_ax.get_xlim()),
+                                    'ylim': list(depth_ax.get_ylim())})
+        document.write(temporary, encoding='utf-8', xml_declaration=True)
         temporary.replace(svg)
         plt.close(fig)
         print(f"Saved: {svg}", flush=True)

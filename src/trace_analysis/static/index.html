@@ -53,7 +53,9 @@
     #routeStatus { display:inline-block; margin-right:12px; padding:5px 10px; border-radius:6px; background:#e3eadc; color:#465538; font-weight:700; }
     #routeStatus[data-locked="true"] { background:#efe1d4; color:#8c5e3c; }
     #distribution { padding:14px 18px; border-bottom:1px solid var(--line); }
-    #distribution img { display:block; width:100%; max-width:1800px; height:auto; }
+    #reuseImage { position:relative; max-width:1800px; }
+    #reuseImage svg { display:block; width:100%; height:auto; }
+    .depth-tooltip { position:absolute; pointer-events:none; padding:7px 10px; border:1px solid #cbb196; border-radius:6px; background:#fffaf4; color:#3d342d; font-size:13px; white-space:nowrap; box-shadow:0 2px 8px #3d342d20; }
     #distribution p { font-size:14px; color:var(--muted); }
     #canvas svg { display:block; max-width:none; height:auto; }
     #canvas svg .node { cursor:pointer; }
@@ -99,7 +101,7 @@
       <section id="distribution" aria-label="Node reuse and depth distributions">
         <b>Node reuse &amp; depth profile</b>
         <p id="reuseStatus">Choose a trace to view its reuse summary.</p>
-        <img id="reuseImage" hidden alt="Side-by-side charts separated by a line: node counts by hit-count range, and node counts by compressed radix depth. Both use the complete tree, excluding root.">
+        <div id="reuseImage" hidden aria-label="Node reuse and nodes by depth. Hover over the depth chart for exact counts."></div>
       </section>
       <div id="routeGuide" hidden>
         <span id="routeStatus" role="status" aria-live="polite" data-locked="false">Unlocked · Hover enabled</span>
@@ -353,18 +355,69 @@
         (kind === 'lmcache_messages' ? ' IDs are generated from messages.' : kind === 'ragpulse' ? ' IDs identify content chunks, not prefix KV blocks.' : '') + '</p>' +
         (!activeScope ? '<p>Build this trace to identify its hashing scope.</p>' : '');
     }
-    function showReuse() {
+    function makeDepthProfileInteractive(container) {
+      const svg = container.querySelector('svg');
+      const metadata = svg?.querySelector('[id="depth-profile-data"]');
+      if (!metadata) return;
+      const data = JSON.parse(metadata.textContent);
+      const depths = Object.keys(data.counts).map(Number).sort((a, b) => a - b);
+      if (!depths.length) return;
+      const view = svg.viewBox.baseVal;
+      const [bx, by, bw, bh] = data.bounds;
+      const left = view.x + bx * view.width, top = view.y + by * view.height;
+      const width = bw * view.width, height = bh * view.height;
+      const marker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      for (const [key, value] of Object.entries({r:4, fill:'#8c5e3c', stroke:'#fffaf4', 'stroke-width':1.5, 'pointer-events':'none', visibility:'hidden'})) marker.setAttribute(key, value);
+      svg.appendChild(marker);
+      const tooltip = document.createElement('div');
+      tooltip.className = 'depth-tooltip';
+      tooltip.hidden = true;
+      container.appendChild(tooltip);
+      const hide = () => { marker.setAttribute('visibility', 'hidden'); tooltip.hidden = true; };
+      svg.addEventListener('pointermove', event => {
+        const matrix = svg.getScreenCTM();
+        if (!matrix) return;
+        const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse());
+        if (point.x < left || point.x > left + width || point.y < top || point.y > top + height) { hide(); return; }
+        const target = data.xlim[0] + (point.x - left) / width * (data.xlim[1] - data.xlim[0]);
+        let lo = 0, hi = depths.length - 1;
+        while (lo < hi) { const mid = Math.floor((lo + hi) / 2); if (depths[mid] < target) lo = mid + 1; else hi = mid; }
+        const depth = lo > 0 && target - depths[lo - 1] < depths[lo] - target ? depths[lo - 1] : depths[lo];
+        const count = data.counts[depth];
+        marker.setAttribute('cx', left + (depth - data.xlim[0]) / (data.xlim[1] - data.xlim[0]) * width);
+        marker.setAttribute('cy', top + height - (count - data.ylim[0]) / (data.ylim[1] - data.ylim[0]) * height);
+        marker.setAttribute('visibility', 'visible');
+        tooltip.textContent = `Depth ${comma(depth)} · ${comma(count)} nodes`;
+        tooltip.hidden = false;
+        const box = container.getBoundingClientRect();
+        tooltip.style.left = `${Math.max(0, Math.min(event.clientX - box.left + 12, box.width - tooltip.offsetWidth))}px`;
+        tooltip.style.top = `${Math.max(0, event.clientY - box.top - tooltip.offsetHeight - 10)}px`;
+      });
+      svg.addEventListener('pointerleave', hide);
+    }
+    let reuseLoad = 0;
+    async function showReuse() {
+      const load = ++reuseLoad;
       showTraceDetails();
       const selected = traceCatalog.find(item => item.id === trace.value);
       const img = byId('reuseImage'), note = byId('reuseStatus');
       img.hidden = true;
-      img.onload = () => { img.hidden = false; };
-      img.onerror = () => { img.hidden = true; note.textContent = 'Offline plot unavailable. Refresh after preparation completes.'; };
+      img.replaceChildren();
       if (selected?.reuse_url) {
         note.textContent = `${selected.name} · Complete tree, root excluded. Independent of tree display limits.`;
-        img.src = selected.reuse_url;
+        try {
+          const response = await fetch(selected.reuse_url);
+          if (!response.ok) throw new Error('Chart unavailable');
+          const documentSvg = new DOMParser().parseFromString(await response.text(), 'image/svg+xml');
+          if (load !== reuseLoad) return;
+          if (documentSvg.querySelector('parsererror') || documentSvg.documentElement.localName !== 'svg') throw new Error('Invalid chart');
+          img.replaceChildren(document.importNode(documentSvg.documentElement, true));
+          img.hidden = false;
+          makeDepthProfileInteractive(img);
+        } catch (error) {
+          if (load === reuseLoad) { img.hidden = true; note.textContent = 'Offline plot unavailable. Refresh after preparation completes.'; }
+        }
       } else {
-        img.removeAttribute('src');
         note.textContent = 'Offline distribution has not been prepared yet. Refresh after preparation completes.';
       }
     }
